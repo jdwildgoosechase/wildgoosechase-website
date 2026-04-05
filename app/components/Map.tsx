@@ -23,11 +23,16 @@ export default function Map({ points }: MapProps) {
     if (!containerRef.current) return
 
     import('leaflet').then(L => {
-      const map = L.default.map(containerRef.current!).setView([0, 20], 2)
+      const map = L.default.map(containerRef.current!, {
+        worldCopyJump: false,
+        maxBounds: [[-90, -180], [90, 180]],
+        maxBoundsViscosity: 1.0
+      }).setView([0, 20], 2)  
+         
       mapRef.current = map
 
-      L.default.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
+      L.default.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '© OpenStreetMap contributors © CARTO'
       }).addTo(map)
 
       const maxCount = Math.max(...points.map(p => p.sighting_count))
