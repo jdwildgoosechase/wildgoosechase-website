@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import Map from './components/Map'
+import PhotoGallery from './components/PhotoGallery'
 
 export default async function Home() {
 
@@ -13,9 +14,18 @@ export default async function Home() {
   const uniqueCountries = stats?.unique_countries ?? 0
   const uniqueYears = stats?.unique_years ?? 0
 
-// Fetch clustered map points
+  // Fetch clustered map points
   const { data: mapSightings } = await supabase
     .rpc('wcg_web_get_map_clusters')
+
+  // Fetch gallery photos
+  const { data: galleryPhotosRaw } = await supabase
+    .rpc('wcg_web_get_gallery_photos')
+
+  // Shuffle on the server so client and server match
+  const galleryPhotos = galleryPhotosRaw 
+    ? [...galleryPhotosRaw].sort(() => Math.random() - 0.5)
+    : []
 
   // Fetch recent sightings via RPC
   const { data: recentSightings } = await supabase
@@ -24,51 +34,71 @@ export default async function Home() {
   return (
     <main className="min-h-screen bg-stone-50">
 
-      {/* Header */}
-      <header className="bg-green-800 text-white px-6 py-4 flex items-center justify-between shadow-lg">
-        <div className="flex items-center gap-3">
-          <span className="text-3xl">🦢</span>
-          <span className="text-2xl font-bold tracking-wide" style={{ fontFamily: 'Georgia, serif' }}>
-            Wildgoosechase
-          </span>
-        </div>
-        <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
-          <a href="#" className="hover:text-green-300 transition-colors">Species</a>
-          <a href="#" className="hover:text-green-300 transition-colors">Trips</a>
-          <a href="#" className="hover:text-green-300 transition-colors">Travels</a>
-          <a href="#" className="hover:text-green-300 transition-colors">Gallery</a>
-          <button className="bg-green-600 hover:bg-green-500 px-4 py-2 rounded-full text-sm font-semibold transition-colors">
-            Sign In
-          </button>
-        </nav>
-      </header>
+  
+{/* Hero with image */}
+      <div className="relative h-96 w-full overflow-hidden">
+        <img
+          src="/hero.jpg"
+          alt="Wildlife hero"
+          className="w-full h-full object-cover object-center"
+        />
+        {/* Dark overlay */}
+        <div className="absolute inset-0 bg-black/50" />
 
-      {/* Hero strip */}
-      <div className="bg-green-700 text-white py-3 px-6 text-center text-sm tracking-widest uppercase font-medium">
-        Tracking wildlife across the world — one sighting at a time 🌍
+        {/* Header overlaid on image */}
+        <div className="absolute top-0 left-0 right-0 px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">🦢</span>
+            <span className="text-2xl font-bold tracking-wide text-white" style={{ fontFamily: 'Georgia, serif' }}>
+              Wildgoosechase
+            </span>
+          </div>
+          <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-white">
+            <a href="#" className="hover:text-green-300 transition-colors">Species</a>
+            <a href="#" className="hover:text-green-300 transition-colors">Trips</a>
+            <a href="#" className="hover:text-green-300 transition-colors">Travels</a>
+            <a href="#" className="hover:text-green-300 transition-colors">Gallery</a>
+            <button className="bg-green-600 hover:bg-green-500 px-4 py-2 rounded-full text-sm font-semibold transition-colors text-white">
+              Sign In
+            </button>
+          </nav>
+        </div>
+
+        {/* Hero text overlaid on image */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-white text-center px-6">
+          <h1 className="text-5xl font-bold mb-4 drop-shadow-lg" style={{ fontFamily: 'Georgia, serif' }}>
+            Wildgoosechase
+          </h1>
+          <p className="text-xl text-green-200 drop-shadow max-w-xl">
+            Tracking wildlife across the world — one sighting at a time 🌍
+          </p>
+        </div>
+
+        {/* Stats overlaid at bottom of hero */}
+        <div className="absolute bottom-0 left-0 right-0 py-6 px-6">          
+          <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+            <div>
+              <div className="text-3xl font-bold text-white">{Number(totalSightings).toLocaleString()}</div>
+              <div className="text-green-300 text-xs mt-1 uppercase tracking-wide">Total Sightings</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-white">{Number(uniqueSpecies).toLocaleString()}</div>
+              <div className="text-green-300 text-xs mt-1 uppercase tracking-wide">Species Recorded</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-white">{Number(uniqueCountries)}</div>
+              <div className="text-green-300 text-xs mt-1 uppercase tracking-wide">Countries Visited</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-white">{Number(uniqueYears)}</div>
+              <div className="text-green-300 text-xs mt-1 uppercase tracking-wide">Years of Data</div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Stats strip */}
-      <section className="bg-white border-b border-stone-200 py-8 px-6">
-        <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-          <div className="p-4">
-            <div className="text-4xl font-bold text-green-700">{Number(totalSightings).toLocaleString()}</div>
-            <div className="text-stone-500 text-sm mt-1 uppercase tracking-wide">Total Sightings</div>
-          </div>
-          <div className="p-4">
-            <div className="text-4xl font-bold text-green-700">{Number(uniqueSpecies).toLocaleString()}</div>
-            <div className="text-stone-500 text-sm mt-1 uppercase tracking-wide">Species Recorded</div>
-          </div>
-          <div className="p-4">
-            <div className="text-4xl font-bold text-green-700">{Number(uniqueCountries)}</div>
-            <div className="text-stone-500 text-sm mt-1 uppercase tracking-wide">Countries Visited</div>
-          </div>
-          <div className="p-4">
-            <div className="text-4xl font-bold text-green-700">{Number(uniqueYears)}</div>
-            <div className="text-stone-500 text-sm mt-1 uppercase tracking-wide">Years of Data</div>
-          </div>
-        </div>
-      </section>
+      {/* Photo gallery */}
+      <PhotoGallery photos={galleryPhotos || []} />
 
       {/* Map */}
       <section className="px-6 py-8 max-w-6xl mx-auto">
