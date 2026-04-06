@@ -180,6 +180,33 @@ export default async function Home() {
         </div>
       </div>
 
+      {/* Call to action */}
+      <div className="bg-green-800 text-white py-16 px-6 text-center">
+        <div className="max-w-2xl mx-auto">
+          <div className="text-5xl mb-4">🦢</div>
+          <h2 className="text-3xl font-bold mb-4" style={{ fontFamily: 'Georgia, serif' }}>
+            Start tracking your own wildlife encounters
+          </h2>
+          <p className="text-green-200 text-lg mb-8 leading-relaxed">
+            Wildgoosechase is a free Android app for recording and exploring your wildlife sightings. 
+            Build your life list, track your trips, and map every encounter with the wild.
+          </p>
+          <div className="flex gap-4 justify-center flex-wrap">
+            <a
+              href="#"
+              className="bg-white text-green-800 font-bold px-8 py-3 rounded-full hover:bg-green-100 transition-colors"
+            >
+              📱 Download for Android
+            </a>
+              <a
+              href="#"
+              className="border-2 border-white text-white font-bold px-8 py-3 rounded-full hover:bg-white hover:text-green-800 transition-colors">
+              Learn More
+            </a>
+          </div>
+        </div>
+      </div>
+
       {/* Footer */}
       <footer className="bg-green-900 text-green-200 text-center py-6 text-sm mt-8">
         <p>🦢 Wildgoosechase — Personal Wildlife Tracker</p>
