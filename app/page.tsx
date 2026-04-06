@@ -53,11 +53,10 @@ export default async function Home() {
               Wildgoosechase
             </span>
           </div>
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-white">
-            <a href="#" className="hover:text-green-300 transition-colors">Species</a>
-            <a href="#" className="hover:text-green-300 transition-colors">Trips</a>
-            <a href="#" className="hover:text-green-300 transition-colors">Travels</a>
-            <a href="#" className="hover:text-green-300 transition-colors">Gallery</a>
+            <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-white">
+            <a href="/about" className="hover:text-green-300 transition-colors">About</a>
+            <a href="/gallery" className="hover:text-green-300 transition-colors">Gallery</a>
+            <a href="/help" className="hover:text-green-300 transition-colors">Help</a>
             <button className="bg-green-600 hover:bg-green-500 px-4 py-2 rounded-full text-sm font-semibold transition-colors text-white">
               Sign In
             </button>
@@ -148,15 +147,6 @@ export default async function Home() {
             <Map points={mapSightings || []} />
           </div>
 
-          {/* Animal of the Day — placeholder for now */}
-          <div className="bg-white rounded-xl border border-stone-200 p-4 flex items-center gap-4">
-            <span className="text-4xl">🦅</span>
-            <div>
-              <div className="text-xs text-green-600 uppercase tracking-wide font-semibold">Animal of the Day</div>
-              <div className="font-bold text-stone-800">Coming soon</div>
-              <div className="text-sm text-stone-400">A new species featured every day</div>
-            </div>
-          </div>
 
           {/* Recent sightings */}
           <div>
