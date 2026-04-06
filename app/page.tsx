@@ -58,9 +58,12 @@ export default async function Home() {
             <Link href="/about" className="hover:text-green-300 transition-colors">About</Link>
             <Link href="/gallery" className="hover:text-green-300 transition-colors">Gallery</Link>
             <Link href="/help" className="hover:text-green-300 transition-colors">Help</Link>
-            <button className="bg-green-600 hover:bg-green-500 px-4 py-2 rounded-full text-sm font-semibold transition-colors text-white">
+            <Link
+              href="/signin"
+              className="bg-green-600 hover:bg-green-500 px-4 py-2 rounded-full text-sm font-semibold transition-colors text-white"
+            >
               Sign In
-            </button>
+            </Link>
           </nav>
         </div>
 
