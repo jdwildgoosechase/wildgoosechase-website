@@ -21,7 +21,6 @@ export default function Map({ points }: MapProps) {
     if (typeof window === 'undefined') return
     if (!containerRef.current) return
 
-    // If map already exists, remove it first
     if (mapRef.current) {
       mapRef.current.remove()
       mapRef.current = null
@@ -29,15 +28,31 @@ export default function Map({ points }: MapProps) {
 
     import('leaflet').then(L => {
       if (!containerRef.current) return
-      // Clear any existing Leaflet instance from the container
       delete (containerRef.current as any)._leaflet_id
-      
+
       const map = L.default.map(containerRef.current, {
         worldCopyJump: false,
         maxBounds: [[-90, -180], [90, 180]],
-        maxBoundsViscosity: 1.0
+        maxBoundsViscosity: 1.0,
+        scrollWheelZoom: false,
+        dragging: true,
       }).setView([0, 20], 2)
+
       mapRef.current = map
+
+      let isDragging = false
+      containerRef.current.addEventListener('mousedown', () => { isDragging = true })
+      window.addEventListener('mouseup', () => { isDragging = false })
+
+      containerRef.current.addEventListener('click', () => {
+        map.scrollWheelZoom.enable()
+      })
+
+      containerRef.current.addEventListener('mouseleave', () => {
+        if (!isDragging) {
+          map.scrollWheelZoom.disable()
+        }
+      })
 
       L.default.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '© OpenStreetMap contributors © CARTO'
@@ -78,11 +93,19 @@ export default function Map({ points }: MapProps) {
 
   }, [points])
 
-  return (
-    <div
-      ref={containerRef}
-      className="w-full rounded-xl shadow-sm border border-stone-200 overflow-hidden"
-      style={{ height: '500px' }}
-    />
+return (
+      <div
+        ref={containerRef}
+        className="relative w-full rounded-xl shadow-sm border border-stone-200 overflow-hidden"
+        style={{ height: '500px' }}
+      >
+      <div
+        className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-2 px-3 py-1.5 rounded-full text-xs z-[1000] pointer-events-none"
+        style={{ backgroundColor: 'rgba(0,0,0,0.6)', color: '#a5d6a7' }}
+      >
+        <span>🗺️</span>
+        <span>Click to enable scroll zoom · Arrow keys to move</span>
+      </div>
+    </div>
   )
-} 
+}

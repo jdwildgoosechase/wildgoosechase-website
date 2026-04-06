@@ -51,15 +51,15 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
 export default function DashboardPage() {
   const router = useRouter()
 
-  const [checking,   setChecking]   = useState(true)
-  const [userEmail,  setUserEmail]  = useState<string | null>(null)
-  const [wcgUserId,  setWcgUserId]  = useState<number | null>(null)
-  const [userName,   setUserName]   = useState<string | null>(null)
-  const [activeTab,  setActiveTab]  = useState<Tab>('overview')
+  const [checking,    setChecking]    = useState(true)
+  const [userEmail,   setUserEmail]   = useState<string | null>(null)
+  const [wcgUserId,   setWcgUserId]   = useState<number | null>(null)
+  const [userName,    setUserName]    = useState<string | null>(null)
+  const [activeTab,   setActiveTab]   = useState<Tab>('overview')
 
-  const [stats,      setStats]      = useState<Stats | null>(null)
-  const [sightings,  setSightings]  = useState<Sighting[]>([])
-  const [mapPoints,  setMapPoints]  = useState<MapPoint[]>([])
+  const [stats,       setStats]       = useState<Stats | null>(null)
+  const [sightings,   setSightings]   = useState<Sighting[]>([])
+  const [mapPoints,   setMapPoints]   = useState<MapPoint[]>([])
   const [dataLoading, setDataLoading] = useState(true)
 
   // ── Auth check ─────────────────────────────────────────────────────────────
@@ -73,21 +73,20 @@ export default function DashboardPage() {
 
       setUserEmail(session.user.email ?? null)
 
-      // Look up wcg_user_id
-        const { data: profile } = await supabase
+      const { data: profile } = await supabase
         .from('usr_user_profiles')
         .select('wcg_user_id, user_name')
         .eq('supabase_user_id', session.user.id)
         .single()
 
-        if (!profile) {
+      if (!profile) {
         router.push('/signin')
         return
-        }
+      }
 
-        setWcgUserId(profile.wcg_user_id)
-        setUserName(profile.user_name ?? null)
-        setChecking(false)
+      setWcgUserId(profile.wcg_user_id)
+      setUserName(profile.user_name ?? null)
+      setChecking(false)
     }
     checkSession()
   }, [router])
@@ -100,15 +99,14 @@ export default function DashboardPage() {
       setDataLoading(true)
 
       const [statsRes, sightingsRes, mapRes] = await Promise.all([
-        supabase.rpc('wcg_web_get_dashboard_stats',           { p_user_id: wcgUserId }),
-        supabase.rpc('wcg_web_get_dashboard_recent_sightings',{ p_user_id: wcgUserId }),
-        supabase.rpc('wcg_web_get_dashboard_map_points',      { p_user_id: wcgUserId }),
+        supabase.rpc('wcg_web_get_dashboard_stats',            { p_user_id: wcgUserId }),
+        supabase.rpc('wcg_web_get_dashboard_recent_sightings', { p_user_id: wcgUserId }),
+        supabase.rpc('wcg_web_get_dashboard_map_points',       { p_user_id: wcgUserId }),
       ])
 
-      if (statsRes.data?.[0])  setStats(statsRes.data[0])
-      if (sightingsRes.data)   setSightings(sightingsRes.data)
+      if (statsRes.data?.[0]) setStats(statsRes.data[0])
+      if (sightingsRes.data)  setSightings(sightingsRes.data)
 
-      // Remap 'count' → 'sighting_count' for the Map component
       if (mapRes.data) {
         setMapPoints(
           mapRes.data.map((p: { latitude: number; longitude: number; count: number }) => ({
@@ -186,12 +184,12 @@ export default function DashboardPage() {
         ) : (
           <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
             {[
-              { label: 'Sightings',  value: stats?.total_sightings,  icon: '👁️'  },
-              { label: 'Species',    value: stats?.total_species,     icon: '🐦'  },
-              { label: 'Countries',  value: stats?.total_countries,   icon: '🌍'  },
-              { label: 'Trips',      value: stats?.total_trips,       icon: '🧳'  },
-              { label: 'Hotspots',   value: stats?.total_hotspots,    icon: '📍'  },
-              { label: 'Years',      value: stats?.years_active,      icon: '📅'  },
+              { label: 'Sightings', value: stats?.total_sightings, icon: '👁️' },
+              { label: 'Species',   value: stats?.total_species,   icon: '🐦' },
+              { label: 'Countries', value: stats?.total_countries, icon: '🌍' },
+              { label: 'Trips',     value: stats?.total_trips,     icon: '🧳' },
+              { label: 'Hotspots',  value: stats?.total_hotspots,  icon: '📍' },
+              { label: 'Years',     value: stats?.years_active,    icon: '📅' },
             ].map(stat => (
               <div
                 key={stat.label}
@@ -227,8 +225,8 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Tab content ── */}
-      <div className="flex-1 px-6 py-6">
-
+        <div className="flex-1 px-6 py-6" style={{ backgroundColor: '#b8d4b8' }}>   
+                 
         {/* Overview tab */}
         {activeTab === 'overview' && (
           <div className="flex flex-col gap-6">
