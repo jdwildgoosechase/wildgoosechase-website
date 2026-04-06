@@ -100,6 +100,9 @@ export default async function Home() {
       {/* Photo gallery */}
       <PhotoGallery photos={galleryPhotos || []} />
 
+      {/* Divider */}
+      <div className="h-2 bg-green-800 w-full" />
+
  {/* Two column layout */}
       <div className="px-3 py-6 flex gap-4">
 
@@ -108,7 +111,7 @@ export default async function Home() {
 
           <h2 className="text-lg font-bold text-stone-700">🌍 Conservation & Resources</h2>
 
-          {/* Organisation cards */}
+{/* Organisation cards */}
           {[
             { name: "BirdLife South Africa", desc: "Protecting birds and their habitats", url: "https://www.birdlife.org.za", emoji: "🐦" },
             { name: "SABAP2", desc: "South African Bird Atlas Project", url: "http://sabap2.adu.org.za", emoji: "🗺️" },
@@ -121,10 +124,12 @@ export default async function Home() {
               href={org.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="bg-white rounded-xl border border-stone-200 p-4 hover:border-green-400 hover:shadow-md transition-all group"
+              className="bg-stone-50 rounded-xl border border-stone-200 p-4 hover:border-green-400 hover:shadow-md transition-all group"
             >
               <div className="flex items-center gap-3">
-                <span className="text-2xl">{org.emoji}</span>
+                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-xl flex-shrink-0">
+                  {org.emoji}
+                </div>
                 <div>
                   <div className="font-semibold text-stone-800 text-sm group-hover:text-green-700 transition-colors">{org.name}</div>
                   <div className="text-xs text-stone-400 mt-0.5">{org.desc}</div>
