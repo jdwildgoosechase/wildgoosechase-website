@@ -32,7 +32,7 @@ export default async function Home() {
     .rpc('wcg_web_get_recent_sightings')
 
   return (
-    <main className="min-h-screen bg-stone-50">
+    <main className="min-h-screen" style={{ backgroundColor: '#d4e8d4' }}>
 
   
 {/* Hero with image */}
@@ -101,10 +101,11 @@ export default async function Home() {
       <PhotoGallery photos={galleryPhotos || []} />
 
  {/* Two column layout */}
-      <div className="max-w-7xl mx-auto px-6 py-8 flex gap-6">
+      <div className="px-3 py-6 flex gap-4">
 
         {/* Left column — Links & Organisations (1/3) */}
-        <div className="w-1/3 flex-shrink-0 flex flex-col gap-4">
+        <div className="w-1/3 flex-shrink-0 flex flex-col gap-4 bg-white rounded-2xl border border-stone-200 p-4">
+
           <h2 className="text-lg font-bold text-stone-700">🌍 Conservation & Resources</h2>
 
           {/* Organisation cards */}
@@ -134,7 +135,7 @@ export default async function Home() {
         </div>
 
         {/* Right column — Map, Animal of Day, Recent Sightings (2/3) */}
-        <div className="flex-1 flex flex-col gap-6">
+        <div className="flex-1 flex flex-col gap-6 bg-white rounded-2xl border border-stone-200 p-4">
 
           {/* Map */}
           <div>

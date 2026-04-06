@@ -27,8 +27,7 @@ export default function Map({ points }: MapProps) {
         worldCopyJump: false,
         maxBounds: [[-90, -180], [90, 180]],
         maxBoundsViscosity: 1.0
-      }).setView([0, 20], 2)  
-         
+      }).setView([0, 20], 2)
       mapRef.current = map
 
       L.default.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
@@ -39,8 +38,6 @@ export default function Map({ points }: MapProps) {
 
       points.forEach(point => {
         if (point.latitude && point.longitude) {
-
-          // Scale opacity based on sighting count
           const intensity = Math.sqrt(point.sighting_count / maxCount)
           const fillOpacity = 0.2 + (intensity * 0.75)
 
@@ -59,6 +56,8 @@ export default function Map({ points }: MapProps) {
           )
         }
       })
+
+      setTimeout(() => map.invalidateSize(), 100)
     })
 
   }, [points])
