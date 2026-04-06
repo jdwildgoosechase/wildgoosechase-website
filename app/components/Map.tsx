@@ -19,11 +19,20 @@ export default function Map({ points }: MapProps) {
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    if (mapRef.current) return
     if (!containerRef.current) return
 
+    // If map already exists, remove it first
+    if (mapRef.current) {
+      mapRef.current.remove()
+      mapRef.current = null
+    }
+
     import('leaflet').then(L => {
-      const map = L.default.map(containerRef.current!, {
+      if (!containerRef.current) return
+      // Clear any existing Leaflet instance from the container
+      delete (containerRef.current as any)._leaflet_id
+      
+      const map = L.default.map(containerRef.current, {
         worldCopyJump: false,
         maxBounds: [[-90, -180], [90, 180]],
         maxBoundsViscosity: 1.0
@@ -59,6 +68,13 @@ export default function Map({ points }: MapProps) {
 
       setTimeout(() => map.invalidateSize(), 100)
     })
+
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove()
+        mapRef.current = null
+      }
+    }
 
   }, [points])
 

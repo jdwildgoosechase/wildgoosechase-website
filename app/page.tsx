@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { supabase } from '../lib/supabase'
 import Map from './components/Map'
 import PhotoGallery from './components/PhotoGallery'
@@ -43,7 +44,7 @@ export default async function Home() {
           className="w-full h-full object-cover object-center"
         />
         {/* Dark overlay */}
-        <div className="absolute inset-0 bg-black/50" />
+        <div className="absolute inset-0 bg-black/50 pointer-events-none" />
 
         {/* Header overlaid on image */}
         <div className="absolute top-0 left-0 right-0 px-6 py-4 flex items-center justify-between">
@@ -53,10 +54,10 @@ export default async function Home() {
               Wildgoosechase
             </span>
           </div>
-            <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-white">
-            <a href="/about" className="hover:text-green-300 transition-colors">About</a>
-            <a href="/gallery" className="hover:text-green-300 transition-colors">Gallery</a>
-            <a href="/help" className="hover:text-green-300 transition-colors">Help</a>
+          <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-white">
+            <Link href="/about" className="hover:text-green-300 transition-colors">About</Link>
+            <Link href="/gallery" className="hover:text-green-300 transition-colors">Gallery</Link>
+            <Link href="/help" className="hover:text-green-300 transition-colors">Help</Link>
             <button className="bg-green-600 hover:bg-green-500 px-4 py-2 rounded-full text-sm font-semibold transition-colors text-white">
               Sign In
             </button>
@@ -64,7 +65,7 @@ export default async function Home() {
         </div>
 
         {/* Hero text overlaid on image */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-white text-center px-6">
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-white text-center px-6 pointer-events-none">
           <h1 className="text-5xl font-bold mb-4 drop-shadow-lg" style={{ fontFamily: 'Georgia, serif' }}>
             Wildgoosechase
           </h1>
