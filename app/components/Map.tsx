@@ -11,9 +11,11 @@ interface ClusterPoint {
 
 interface MapProps {
   points: ClusterPoint[]
+  theme?: 'dark' | 'light'
+  height?: number
 }
 
-export default function Map({ points }: MapProps) {
+export default function Map({ points, theme = 'dark', height = 500 }: MapProps) {
   const mapRef = useRef<any>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -30,13 +32,19 @@ export default function Map({ points }: MapProps) {
       if (!containerRef.current) return
       delete (containerRef.current as any)._leaflet_id
 
+      const southWest = L.default.latLng(-90, -180)
+      const northEast = L.default.latLng(90, 180)
+      const bounds = L.default.latLngBounds(southWest, northEast)
+
       const map = L.default.map(containerRef.current, {
         worldCopyJump: false,
-        maxBounds: [[-90, -180], [90, 180]],
+        maxBounds: bounds,
         maxBoundsViscosity: 1.0,
         scrollWheelZoom: false,
         dragging: true,
-      }).setView([0, 20], 2)
+        minZoom: 2,
+        maxZoom: 18,
+      }).setView([20, 20], 2)
 
       mapRef.current = map
 
@@ -54,8 +62,14 @@ export default function Map({ points }: MapProps) {
         }
       })
 
-      L.default.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '© OpenStreetMap contributors © CARTO'
+      const tileUrl = theme === 'light'
+        ? 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
+        : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+
+      L.default.tileLayer(tileUrl, {
+        attribution: '© OpenStreetMap contributors © CARTO',
+        noWrap: true,
+        bounds: bounds,
       }).addTo(map)
 
       const maxCount = Math.max(...points.map(p => p.sighting_count))
@@ -91,14 +105,14 @@ export default function Map({ points }: MapProps) {
       }
     }
 
-  }, [points])
+  }, [points, theme])
 
-return (
-      <div
-        ref={containerRef}
-        className="relative w-full rounded-xl shadow-sm border border-stone-200 overflow-hidden"
-        style={{ height: '500px' }}
-      >
+  return (
+    <div
+      ref={containerRef}
+      className="relative w-full rounded-xl shadow-sm border border-stone-200 overflow-hidden"
+      style={{ height: `${height}px` }}
+    >
       <div
         className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-2 px-3 py-1.5 rounded-full text-xs z-[1000] pointer-events-none"
         style={{ backgroundColor: 'rgba(0,0,0,0.6)', color: '#a5d6a7' }}

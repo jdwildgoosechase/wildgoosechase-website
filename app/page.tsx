@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { supabase } from '../lib/supabase'
 import Map from './components/Map'
 import PhotoGallery from './components/PhotoGallery'
+import NavBar from './components/NavBar'
 
 export default async function Home() {
 
@@ -14,6 +15,15 @@ export default async function Home() {
   const uniqueSpecies = stats?.unique_species ?? 0
   const uniqueCountries = stats?.unique_countries ?? 0
   const uniqueYears = stats?.unique_years ?? 0
+
+  // Fetch community stats
+  const { data: communityData } = await supabase
+    .rpc('wcg_web_get_community_stats')
+
+  const community = communityData?.[0]
+  const totalUsers = community?.total_users ?? 0
+  const activeUsers7d = community?.active_users_7d ?? 0
+
 
   // Fetch clustered map points
   const { data: mapSightings } = await supabase
@@ -46,26 +56,17 @@ export default async function Home() {
         {/* Dark overlay */}
         <div className="absolute inset-0 bg-black/50 pointer-events-none" />
 
+
+
+
         {/* Header overlaid on image */}
-        <div className="absolute top-0 left-0 right-0 px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-3xl">🦢</span>
-            <span className="text-2xl font-bold tracking-wide text-white" style={{ fontFamily: 'Georgia, serif' }}>
-              Wildgoosechase
-            </span>
-          </div>
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-white">
-            <Link href="/about" className="hover:text-green-300 transition-colors">About</Link>
-            <Link href="/gallery" className="hover:text-green-300 transition-colors">Gallery</Link>
-            <Link href="/help" className="hover:text-green-300 transition-colors">Help</Link>
-            <Link
-              href="/signin"
-              className="bg-green-600 hover:bg-green-500 px-4 py-2 rounded-full text-sm font-semibold transition-colors text-white"
-            >
-              Sign In
-            </Link>
-          </nav>
+        <div className="absolute top-0 left-0 right-0">
+          <NavBar transparent={true} />
         </div>
+
+
+
+
 
         {/* Hero text overlaid on image */}
         <div className="absolute inset-0 flex flex-col items-center justify-center text-white text-center px-6 pointer-events-none">
@@ -79,7 +80,7 @@ export default async function Home() {
 
         {/* Stats overlaid at bottom of hero */}
         <div className="absolute bottom-0 left-0 right-0 py-6 px-6">          
-          <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+          <div className="max-w-5xl mx-auto grid grid-cols-3 md:grid-cols-6 gap-6 text-center">
             <div>
               <div className="text-3xl font-bold text-white">{Number(totalSightings).toLocaleString()}</div>
               <div className="text-green-300 text-xs mt-1 uppercase tracking-wide">Total Sightings</div>
@@ -96,6 +97,16 @@ export default async function Home() {
               <div className="text-3xl font-bold text-white">{Number(uniqueYears)}</div>
               <div className="text-green-300 text-xs mt-1 uppercase tracking-wide">Years of Data</div>
             </div>
+
+            <div>
+              <div className="text-3xl font-bold text-white">{Number(totalUsers)}</div>
+              <div className="text-green-300 text-xs mt-1 uppercase tracking-wide">Registered Users</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-white">{Number(activeUsers7d)}</div>
+              <div className="text-green-300 text-xs mt-1 uppercase tracking-wide">Active This Week</div>
+            </div>
+
           </div>
         </div>
       </div>
@@ -148,7 +159,7 @@ export default async function Home() {
           {/* Map */}
           <div>
             <h2 className="text-lg font-bold text-stone-700 mb-3">🗺️ Sighting Locations</h2>
-            <Map points={mapSightings || []} />
+            <Map points={mapSightings || []} theme="light" height={750} />
           </div>
 
 

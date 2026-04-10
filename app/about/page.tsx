@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import NavBar from '../components/NavBar'
 
 export default function AboutPage() {
   return (
@@ -13,26 +14,13 @@ export default function AboutPage() {
         />
         <div className="absolute inset-0 bg-black/50 pointer-events-none" />
 
+
+
         {/* Header overlaid on image */}
-        <div className="absolute top-0 left-0 right-0 px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3">
-            <span className="text-3xl">🦢</span>
-            <span className="text-2xl font-bold tracking-wide text-white" style={{ fontFamily: 'Georgia, serif' }}>
-              Wildgoosechase
-            </span>
-          </Link>
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-white">
-            <Link href="/" className="hover:text-green-300 transition-colors">Home</Link>
-            <Link href="/gallery" className="hover:text-green-300 transition-colors">Gallery</Link>
-            <Link href="/help" className="hover:text-green-300 transition-colors">Help</Link>
-            <Link
-              href="/signin"
-              className="bg-green-600 hover:bg-green-500 px-4 py-2 rounded-full text-sm font-semibold transition-colors text-white"
-            >
-              Sign In
-            </Link>
-          </nav>
+        <div className="absolute top-0 left-0 right-0">
+          <NavBar transparent={true} />
         </div>
+
 
         {/* Hero text */}
         <div className="absolute inset-0 flex flex-col items-center justify-center text-white text-center px-6 pointer-events-none">

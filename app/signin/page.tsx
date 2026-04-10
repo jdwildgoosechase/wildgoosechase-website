@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../lib/supabase'
+import NavBar from '../components/NavBar'
 
 export default function SignInPage() {
   const router = useRouter()
@@ -78,22 +79,9 @@ export default function SignInPage() {
         <div className="absolute inset-0 flex flex-col">
 
           {/* ── Nav ── */}
-          <div className="flex items-center justify-between px-6 py-4">
-            <Link href="/" style={{ fontFamily: 'Georgia, serif' }} className="text-white text-xl font-bold tracking-wide">
-              🦢 Wildgoosechase
-            </Link>
-            <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-white">
-              <Link href="/" className="hover:text-green-300 transition-colors">Home</Link>
-              <Link href="/gallery" className="hover:text-green-300 transition-colors">Gallery</Link>
-              <Link href="/help" className="hover:text-green-300 transition-colors">Help</Link>
-              <Link
-                href="/signin"
-                className="bg-green-600 hover:bg-green-500 px-4 py-2 rounded-full text-sm font-semibold transition-colors text-white"
-              >
-                Sign In
-              </Link>
-            </nav>
-          </div>
+        <div className="absolute top-0 left-0 right-0">
+          <NavBar transparent={true} />
+        </div>
 
           <div className="flex-1 flex items-center justify-center">
             <h1
