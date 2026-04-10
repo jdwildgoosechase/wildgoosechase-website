@@ -292,15 +292,22 @@ async function applyMapping() {
 
     // Validate dates and coordinates — flag bad rows before matching
     const validated = parsed.map(row => {
+        
       // Date validation
-      if (!row.date || row.date === 'Invalid Date' || !/^\d{4}-\d{2}-\d{2}$/.test(row.date)) {
-        return { ...row, status: 'review' as const, errorMessage: `Invalid date: "${row.date}" — check date format selection` }
+      const cleanDate = row.date?.split(' ')[0] // strip any time component e.g. "0000-00-00 00:00:00"
+      if (!cleanDate || !/^\d{4}-\d{2}-\d{2}$/.test(cleanDate)) {
+        return { ...row, status: 'review' as const, errorMessage: `Invalid date format: "${row.date}" — check date format selection` }
       }
-      const d = new Date(row.date)
-      if (isNaN(d.getTime()) || d.getFullYear() < 1900 || d.getFullYear() > new Date().getFullYear()) {
-        return { ...row, status: 'review' as const, errorMessage: `Date out of range: "${row.date}"` }
+      const [yyyy, mm, dd] = cleanDate.split('-').map(Number)
+      if (yyyy < 1900 || yyyy > new Date().getFullYear()) {
+        return { ...row, status: 'review' as const, errorMessage: `Date year out of range: "${cleanDate}" (must be 1900 to present)` }
       }
-
+      if (mm < 1 || mm > 12) {
+        return { ...row, status: 'review' as const, errorMessage: `Invalid month in date: "${cleanDate}"` }
+      }
+      if (dd < 1 || dd > 31) {
+        return { ...row, status: 'review' as const, errorMessage: `Invalid day in date: "${cleanDate}"` }
+      }
 
       // Check if coordinate columns were mapped but contain non-numeric values
       if (mapping.latitude) {
