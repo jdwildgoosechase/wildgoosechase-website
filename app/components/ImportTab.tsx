@@ -278,7 +278,7 @@ export default function ImportTab({ wcgUserId }: ImportTabProps) {
   }
 
   // ── Apply mapping and proceed to preview ────────────────────────────────────
-  async function applyMapping() {
+async function applyMapping() {
     if (!mapping.scientificName && !mapping.commonName) {
       alert('Please map at least one of Scientific Name or Common Name.')
       return
@@ -289,9 +289,54 @@ export default function ImportTab({ wcgUserId }: ImportTabProps) {
     }
     setParsing(true)
     const parsed = parseGenericRows(csvHeaders, csvRawRows, mapping, dateFormat)
-    setRows(parsed)
+
+    // Validate dates and coordinates — flag bad rows before matching
+    const validated = parsed.map(row => {
+      // Date validation
+      if (!row.date || row.date === 'Invalid Date' || !/^\d{4}-\d{2}-\d{2}$/.test(row.date)) {
+        return { ...row, status: 'review' as const, errorMessage: `Invalid date: "${row.date}" — check date format selection` }
+      }
+      const d = new Date(row.date)
+      if (isNaN(d.getTime()) || d.getFullYear() < 1900 || d.getFullYear() > new Date().getFullYear()) {
+        return { ...row, status: 'review' as const, errorMessage: `Date out of range: "${row.date}"` }
+      }
+
+
+      // Check if coordinate columns were mapped but contain non-numeric values
+      if (mapping.latitude) {
+        const rawLat = csvRawRows[row.rowIndex - 1]?.[csvHeaders.indexOf(mapping.latitude)]
+        if (rawLat && rawLat.trim() !== '' && row.latitude === null) {
+          return { ...row, status: 'review' as const, errorMessage: `Latitude is not a valid number: "${rawLat}"` }
+        }
+      }
+      if (mapping.longitude) {
+        const rawLng = csvRawRows[row.rowIndex - 1]?.[csvHeaders.indexOf(mapping.longitude)]
+        if (rawLng && rawLng.trim() !== '' && row.longitude === null) {
+          return { ...row, status: 'review' as const, errorMessage: `Longitude is not a valid number: "${rawLng}"` }
+        }
+      }
+      
+
+      // Coordinate validation
+      if (row.latitude !== null && row.longitude !== null) {
+        if (row.latitude < -90  || row.latitude > 90) {
+          return { ...row, status: 'review' as const, errorMessage: `Latitude out of range: ${row.latitude} (must be -90 to 90)` }
+        }
+        if (row.longitude < -180 || row.longitude > 180) {
+          return { ...row, status: 'review' as const, errorMessage: `Longitude out of range: ${row.longitude} (must be -180 to 180)` }
+        }
+        // Warn if coordinates look swapped — latitude shouldn't be > 90
+        // but also check if they look like they might be swapped (lng in lat field)
+        if (Math.abs(row.latitude) > Math.abs(row.longitude) && Math.abs(row.latitude) > 45) {
+          return { ...row, status: 'review' as const, errorMessage: `Coordinates may be swapped — latitude ${row.latitude}, longitude ${row.longitude}. Check column mapping.` }
+        }
+      }
+      return row
+    })
+
+    setRows(validated)
     setStage('preview')
-    const updated = await matchAllSpecies(parsed)
+    const updated = await matchAllSpecies(validated)
     setRows(updated)
     setParsing(false)
   }
@@ -378,7 +423,7 @@ const { countryId, provinceId, regionId } = await resolveLocation(row)
           p_user_id:     wcgUserId,
           p_species_id:  row.speciesId,
           p_date:        row.date,
-          p_time:        row.time || null,
+          p_time:        row.time || '06:00',
           p_latitude:    row.latitude,
           p_longitude:   row.longitude,
           p_country_id:  countryId,
