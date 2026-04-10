@@ -259,6 +259,15 @@ export default function ImportTab({ wcgUserId }: ImportTabProps) {
       return
     }
 
+    const ROW_LIMIT = 2000
+
+    if (rawRows.length > ROW_LIMIT) {
+      alert(`This file contains ${rawRows.length.toLocaleString()} rows which exceeds the maximum of ${ROW_LIMIT.toLocaleString()} rows per import.\n\nPlease split your file into smaller batches (e.g. one year at a time) and import each separately.`)
+      setParsing(false)
+      if (fileRef.current) fileRef.current.value = ''
+      return
+    }
+
     if (format === 'ebird') {
       // eBird — go straight to matching
       const parsed = parseEbirdRows(headers, rawRows)
@@ -292,7 +301,7 @@ async function applyMapping() {
 
     // Validate dates and coordinates — flag bad rows before matching
     const validated = parsed.map(row => {
-        
+
       // Date validation
       const cleanDate = row.date?.split(' ')[0] // strip any time component e.g. "0000-00-00 00:00:00"
       if (!cleanDate || !/^\d{4}-\d{2}-\d{2}$/.test(cleanDate)) {
@@ -508,11 +517,13 @@ const { countryId, provinceId, regionId } = await resolveLocation(row)
               <>
                 <p className="font-medium text-white mb-1">eBird format</p>
                 <p>Export from <span className="text-green-400">ebird.org → My eBird → Download My Data</span> and upload the <span className="text-green-400">MyEBirdData.csv</span> file directly. No column mapping needed.</p>
+                <p className="mt-1 text-yellow-400">Maximum 2,000 rows per import. For larger exports split by year in Excel before importing.</p>
               </>
             ) : (
               <>
                 <p className="font-medium text-white mb-1">Generic CSV format</p>
                 <p>Upload any CSV file. You will be shown a column mapping screen where you can tell us which column contains which data. We will try to auto-detect common column names.</p>
+                <p className="mt-1 text-yellow-400">Maximum 2,000 rows per import. For larger files split by year before importing.</p>
               </>
             )}
           </div>
