@@ -670,7 +670,18 @@ const { countryId, provinceId, regionId } = await resolveLocation(row)
               <p className="text-green-400 text-xs">Skipped</p>
             </div>
             {parsing && (
-              <div className="text-green-400 text-sm animate-pulse">Matching species…</div>
+              <div className="flex flex-col gap-1 flex-1">
+                <div className="flex items-center justify-between">
+                  <p className="text-green-300 text-sm animate-pulse">⚙️ Matching species — please wait before selecting…</p>
+                  <p className="text-green-500 text-xs">{rows.filter(r => r.status !== 'pending').length} of {rows.length} done</p>
+                </div>
+                <div className="w-full rounded-full h-2" style={{ backgroundColor: '#1a2e1a' }}>
+                  <div
+                    className="h-2 rounded-full bg-green-600 transition-all duration-300"
+                    style={{ width: `${rows.length > 0 ? Math.round((rows.filter(r => r.status !== 'pending').length / rows.length) * 100) : 0}%` }}
+                  />
+                </div>
+              </div>
             )}
             <div className="flex gap-3 ml-auto">
               <button onClick={reset} className="px-4 py-2 rounded-lg text-sm text-green-300 border border-green-700 hover:bg-green-900 transition-colors">
@@ -717,12 +728,15 @@ const { countryId, provinceId, regionId } = await resolveLocation(row)
                     <div className="flex-shrink-0 flex flex-col gap-1 min-w-48">
                       {row.candidates.length > 0 ? (
                         <>
-                          <p className="text-yellow-400 text-xs mb-1">Select correct species:</p>
+                          <p className="text-yellow-400 text-xs mb-1">
+                            {parsing ? '⏳ Wait for matching to complete…' : 'Select correct species:'}
+                          </p>
                           {row.candidates.map(c => (
                             <button
                               key={c.species_id}
-                              onClick={() => selectSpecies(row.rowIndex, c)}
-                              className="text-left px-3 py-1 rounded-lg text-xs text-green-200 hover:bg-green-800 transition-colors"
+                              onClick={() => !parsing && selectSpecies(row.rowIndex, c)}
+                              disabled={parsing}
+                              className="text-left px-3 py-1 rounded-lg text-xs text-green-200 hover:bg-green-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                               style={{ backgroundColor: '#1a2e1a' }}
                             >
                               {c.common_name} <span className="text-green-500 italic">{c.scientific_name}</span>
