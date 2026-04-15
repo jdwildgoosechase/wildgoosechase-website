@@ -310,12 +310,29 @@ export default function ImportTab({ wcgUserId }: ImportTabProps) {
     }
 
     if (format === 'ebird') {
+      // Validate this is the correct eBird export format
+      const requiredColumns = ['Common Name', 'Scientific Name', 'Latitude', 'Longitude', 'Date']
+      const missingColumns = requiredColumns.filter(col => !headers.includes(col))
+
+      if (missingColumns.length > 0) {
+        const hasLatLng = headers.includes('Latitude') && headers.includes('Longitude')
+        const errorMsg = !hasLatLng
+          ? `This does not look like the correct eBird export file — it is missing GPS coordinates (Latitude and Longitude columns).\n\nYou may have uploaded a checklist export or life list export instead of your full observation data.\n\nPlease follow the instructions above to download your full observations from eBird → My eBird → Download My Data → Request my observations.`
+          : `This file is missing required columns: ${missingColumns.join(', ')}.\n\nPlease make sure you are uploading the MyEBirdData.csv file from the full eBird data download.`
+        alert(errorMsg)
+        setParsing(false)
+        if (fileRef.current) fileRef.current.value = ''
+        return
+      }
+
       const parsed = parseEbirdRows(headers, rawRows)
       setRows(parsed)
       setStage('preview')
       const updated = await matchAllSpecies(parsed)
       setRows(updated)
       setParsing(false)
+
+
     } else if (format === 'birdlasser') {
       const parsed = parseBirdLasserRows(headers, rawRows)
       setRows(parsed)
@@ -573,9 +590,17 @@ const { countryId, provinceId, regionId } = await resolveLocation(row)
               </>
             ) : format === 'ebird' ? (
               <>
-                <p className="font-medium text-white mb-1">eBird format</p>
-                <p>Export from <span className="text-green-400">ebird.org → My eBird → Download My Data</span> and upload the <span className="text-green-400">MyEBirdData.csv</span> file directly. No column mapping needed.</p>
-                <p className="mt-1 text-yellow-400">Maximum 2,000 rows per import. For larger exports split by year in Excel before importing.</p>
+                <p className="font-medium text-white mb-1">eBird format — important: use the correct export</p>
+                <ol className="list-decimal list-inside space-y-1 mt-2 text-green-300">
+                  <li>Go to <span className="text-green-400">ebird.org</span> and sign in</li>
+                  <li>Click <span className="text-green-400">My eBird</span> in the top navigation</li>
+                  <li>Scroll to the bottom left and click <span className="text-green-400">Download My Data</span></li>
+                  <li>Click <span className="text-green-400">Request my observations</span></li>
+                  <li>Wait for the email from eBird and download the zip file</li>
+                  <li>Unzip and upload the file named <span className="text-green-400">MyEBirdData.csv</span></li>
+                </ol>
+                <p className="mt-2 text-red-400 text-xs">⚠️ Do not use checklist exports or life list exports — these do not include GPS coordinates and will not import correctly.</p>
+                <p className="mt-1 text-yellow-400 text-xs">Maximum 2,000 rows per file. For larger datasets filter by year in Excel and import one year at a time.</p>
               </>
             ) : (
               <>
