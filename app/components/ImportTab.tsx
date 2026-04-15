@@ -15,6 +15,7 @@ interface ImportRow {
   longitude:      number | null
   count:          number
   comments:       string
+  heardOnly:      number
   speciesId:      number | null
   speciesMatch:   string | null
   matchType:      string | null
@@ -166,10 +167,49 @@ function parseEbirdRows(headers: string[], rows: string[][]): ImportRow[] {
       comments:       cols[comtIdx] ?? '',
       speciesId: null, speciesMatch: null, matchType: null, matchScore: null,
       countryId: null, provinceId: null,
+      heardOnly: 0,
       status: 'pending', errorMessage: null, candidates: [],
     }
   })
 }
+
+// ── birdlasser parser using column mapping ──────────────────────────────────────
+
+
+function parseBirdLasserRows(headers: string[], rows: string[][]): ImportRow[] {
+  const idx = (name: string) => headers.indexOf(name)
+  const comIdx      = idx('English IOC')
+  const dateIdx     = idx('Date')
+  const timeIdx     = idx('Time')
+  const seenIdx     = idx('Seen/Heard')
+  const latIdx      = idx('Latitude')
+  const lngIdx      = idx('Longitude')
+  const countIdx    = idx('Count')
+
+  return rows.map((cols, i) => {
+    const lat = parseFloat(cols[latIdx] ?? '')
+    const lng = parseFloat(cols[lngIdx] ?? '')
+    const seenHeard = (cols[seenIdx] ?? '').toLowerCase().trim()
+    return {
+      rowIndex:       i + 1,
+      commonName:     cols[comIdx]  ?? '',
+      scientificName: '',
+      date:           (cols[dateIdx] ?? '').replace(/\//g, '-'),
+      time:           cols[timeIdx] ?? '',
+      latitude:       isNaN(lat) ? null : lat,
+      longitude:      isNaN(lng) ? null : lng,
+      count:          parseInt(cols[countIdx] ?? '') || 1,
+      comments:       '',
+      heardOnly:      seenHeard === 'heard' ? 1 : 0,
+      speciesId: null, speciesMatch: null, matchType: null, matchScore: null,
+      countryId: null, provinceId: null,
+      status: 'pending', errorMessage: null, candidates: [],
+    }
+  })
+}
+
+
+
 
 // ── Generic parser using column mapping ──────────────────────────────────────
 
@@ -205,6 +245,7 @@ function parseGenericRows(
       comments:       comtIdx >= 0 ? cols[comtIdx] ?? '' : '',
       speciesId: null, speciesMatch: null, matchType: null, matchScore: null,
       countryId: null, provinceId: null,
+      heardOnly: 0,
       status: 'pending', errorMessage: null, candidates: [],
     }
   })
@@ -230,7 +271,7 @@ function StatusBadge({ status }: { status: ImportRow['status'] }) {
 export default function ImportTab({ wcgUserId }: ImportTabProps) {
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const [format,   setFormat]   = useState<'ebird' | 'generic'>('ebird')
+  const [format,   setFormat]   = useState<'ebird' | 'birdlasser' | 'generic'>('ebird')
   const [stage,    setStage]    = useState<'upload' | 'mapping' | 'preview' | 'importing' | 'done'>('upload')
   const [parsing,  setParsing]  = useState(false)
   const [rows,     setRows]     = useState<ImportRow[]>([])
@@ -269,8 +310,14 @@ export default function ImportTab({ wcgUserId }: ImportTabProps) {
     }
 
     if (format === 'ebird') {
-      // eBird — go straight to matching
       const parsed = parseEbirdRows(headers, rawRows)
+      setRows(parsed)
+      setStage('preview')
+      const updated = await matchAllSpecies(parsed)
+      setRows(updated)
+      setParsing(false)
+    } else if (format === 'birdlasser') {
+      const parsed = parseBirdLasserRows(headers, rawRows)
       setRows(parsed)
       setStage('preview')
       const updated = await matchAllSpecies(parsed)
@@ -447,6 +494,7 @@ const { countryId, provinceId, regionId } = await resolveLocation(row)
           p_region_id:   regionId,
           p_num_animals: row.count,
           p_comments:    row.comments || null,
+          p_heard_only:  row.heardOnly ?? 0,
         })
         if (error) {
           errors++
@@ -498,22 +546,32 @@ const { countryId, provinceId, regionId } = await resolveLocation(row)
 
           {/* Format selector */}
           <div className="flex gap-3 mb-6">
-            {(['ebird', 'generic'] as const).map(f => (
-              <button
-                key={f}
-                onClick={() => setFormat(f)}
-                className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  format === f ? 'bg-green-700 text-white' : 'text-green-300 border border-green-700 hover:bg-green-900'
-                }`}
-              >
-                {f === 'ebird' ? '🐦 eBird Export' : '📄 Generic CSV'}
-              </button>
-            ))}
+            {([
+            { id: 'ebird',      label: '🐦 eBird Export'    },
+            { id: 'birdlasser', label: '🦅 BirdLasser Export' },
+            { id: 'generic',    label: '📄 Generic CSV'      },
+          ] as const).map(f => (
+            <button
+              key={f.id}
+              onClick={() => setFormat(f.id)}
+              className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors ${
+                format === f.id ? 'bg-green-700 text-white' : 'text-green-300 border border-green-700 hover:bg-green-900'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
           </div>
 
           {/* Format hint */}
           <div className="rounded-xl p-4 mb-6 text-sm text-green-300" style={{ backgroundColor: '#1a2e1a' }}>
-            {format === 'ebird' ? (
+            {format === 'birdlasser' ? (
+              <>
+                <p className="font-medium text-white mb-1">BirdLasser format</p>
+                <p>Export your life list from the BirdLasser app. Go to <span className="text-green-400">BirdLasser → My Lists → Life List → Export CSV</span>. Upload the exported CSV file directly. Columns mapped automatically: species name, date, time, coordinates, count and heard/seen status.</p>
+                <p className="mt-1 text-yellow-400">Maximum 2,000 rows per import. For larger exports split by year before importing.</p>
+              </>
+            ) : format === 'ebird' ? (
               <>
                 <p className="font-medium text-white mb-1">eBird format</p>
                 <p>Export from <span className="text-green-400">ebird.org → My eBird → Download My Data</span> and upload the <span className="text-green-400">MyEBirdData.csv</span> file directly. No column mapping needed.</p>
@@ -726,23 +784,45 @@ const { countryId, provinceId, regionId } = await resolveLocation(row)
                   {/* Review controls */}
                   {row.status === 'review' && (
                     <div className="flex-shrink-0 flex flex-col gap-1 min-w-48">
-                      {row.candidates.length > 0 ? (
+                        {row.candidates.length > 0 ? (
                         <>
                           <p className="text-yellow-400 text-xs mb-1">
-                            {parsing ? '⏳ Wait for matching to complete…' : 'Select correct species:'}
+                            {parsing ? '⏳ Wait for matching to complete…' : `Select correct species (${row.candidates.length} suggestions):`}
                           </p>
-                          {row.candidates.map(c => (
-                            <button
-                              key={c.species_id}
-                              onClick={() => !parsing && selectSpecies(row.rowIndex, c)}
-                              disabled={parsing}
-                              className="text-left px-3 py-1 rounded-lg text-xs text-green-200 hover:bg-green-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                              style={{ backgroundColor: '#1a2e1a' }}
-                            >
-                              {c.common_name} <span className="text-green-500 italic">{c.scientific_name}</span>
-                              <span className="text-green-600 ml-1">{Math.round(c.match_score * 100)}%</span>
-                            </button>
-                          ))}
+                          <div className="flex flex-col gap-1 max-h-48 overflow-y-auto pr-1">
+                            {/* Fuzzy matches first */}
+                            {row.candidates.filter(c => c.match_type !== 'last_word').map(c => (
+                              <button
+                                key={c.species_id}
+                                onClick={() => !parsing && selectSpecies(row.rowIndex, c)}
+                                disabled={parsing}
+                                className="text-left px-3 py-1 rounded-lg text-xs text-green-200 hover:bg-green-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                style={{ backgroundColor: '#1a2e1a' }}
+                              >
+                                {c.common_name} <span className="text-green-500 italic">{c.scientific_name}</span>
+                                <span className="text-green-600 ml-1">{Math.round(c.match_score * 100)}%</span>
+                              </button>
+                            ))}
+                            {/* Last word matches with a divider */}
+                            {row.candidates.some(c => c.match_type === 'last_word') && (
+                              <>
+                                <p className="text-green-600 text-xs px-1 pt-1 border-t border-green-900">
+                                  Also contains "{row.commonName.split(' ').pop()}":
+                                </p>
+                                {row.candidates.filter(c => c.match_type === 'last_word').map(c => (
+                                  <button
+                                    key={c.species_id}
+                                    onClick={() => !parsing && selectSpecies(row.rowIndex, c)}
+                                    disabled={parsing}
+                                    className="text-left px-3 py-1 rounded-lg text-xs text-green-300 hover:bg-green-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                    style={{ backgroundColor: '#1a2e1a' }}
+                                  >
+                                    {c.common_name} <span className="text-green-500 italic">{c.scientific_name}</span>
+                                  </button>
+                                ))}
+                              </>
+                            )}
+                          </div>
                         </>
                       ) : (
                         <p className="text-yellow-400 text-xs">No candidates found</p>
