@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
+
+type Context = 'sighting' | 'hotspot' | 'trip' | 'checklist' | 'none'
 
 interface Species {
   species_id:      number
@@ -35,12 +37,27 @@ interface Sighting {
   longitude:       number | null
 }
 
+interface Hotspot {
+  hotspot_id:   number
+  hotspot_name: string
+}
+
+interface Trip {
+  trip_id:   number
+  trip_name: string
+}
+
+interface Checklist {
+  checklist_id:   number
+  checklist_name: string
+}
+
 interface UploadFile {
-  file:      File
-  preview:   string
-  comment:   string
-  status:    'pending' | 'uploading' | 'done' | 'error'
-  error:     string | null
+  file:    File
+  preview: string
+  comment: string
+  status:  'pending' | 'uploading' | 'done' | 'error'
+  error:   string | null
 }
 
 interface PhotoUploadModalProps {
@@ -51,13 +68,7 @@ interface PhotoUploadModalProps {
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function generateFileName(file: File): string {
-  const ext  = file.name.split('.').pop() ?? 'jpg'
-  const ts   = Date.now()
-  return `${ts}.${ext}`
-}
+// ── Image resize helper ───────────────────────────────────────────────────────
 
 async function resizeImage(file: File, maxSize: number): Promise<Blob> {
   return new Promise((resolve, reject) => {
@@ -76,35 +87,101 @@ async function resizeImage(file: File, maxSize: number): Promise<Blob> {
       canvas.height = height
       const ctx = canvas.getContext('2d')!
       ctx.drawImage(img, 0, 0, width, height)
-      canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Canvas failed')), 'image/jpeg', 0.85)
+      canvas.toBlob(
+        blob => blob ? resolve(blob) : reject(new Error('Canvas toBlob failed')),
+        'image/jpeg', 0.85
+      )
     }
     img.onerror = reject
     img.src = url
   })
 }
 
+function generateFileName(file: File): string {
+  const ext = file.name.split('.').pop() ?? 'jpg'
+  return `${Date.now()}.${ext}`
+}
+
+// ── Step indicator ────────────────────────────────────────────────────────────
+
+function StepIndicator({ steps, current }: { steps: string[]; current: number }) {
+  return (
+    <div className="flex items-center gap-2 mt-1">
+      {steps.map((label, i) => (
+        <div key={i} className="flex items-center gap-2">
+          <span className={`text-xs ${i === current ? 'text-white' : i < current ? 'text-green-600' : 'text-green-800'}`}>
+            {i < current ? '✓' : `${i + 1}.`} {label}
+          </span>
+          {i < steps.length - 1 && <span className="text-green-800 text-xs">›</span>}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function PhotoUploadModal({ wcgUserId, onClose, onSuccess }: PhotoUploadModalProps) {
-  const [step,           setStep]           = useState<'species' | 'sighting' | 'photos'>('species')
-  const [speciesQuery,   setSpeciesQuery]   = useState('')
-  const [speciesList,    setSpeciesList]    = useState<Species[]>([])
-  const [speciesLoading, setSpeciesLoading] = useState(false)
+
+  // ── Step management ───────────────────────────────────────────────────────
+  type Step = 'context' | 'species' | 'sighting' | 'link' | 'photos'
+  const [step, setStep] = useState<Step>('context')
+  const [context, setContext] = useState<Context | null>(null)
+
+  // ── Species / sighting state ──────────────────────────────────────────────
+  const [speciesQuery,    setSpeciesQuery]    = useState('')
+  const [speciesList,     setSpeciesList]     = useState<Species[]>([])
+  const [speciesLoading,  setSpeciesLoading]  = useState(false)
   const [selectedSpecies, setSelectedSpecies] = useState<Species | null>(null)
-  const [sightings,      setSightings]      = useState<Sighting[]>([])
+  const [sightings,       setSightings]       = useState<Sighting[]>([])
   const [sightingsLoading, setSightingsLoading] = useState(false)
   const [selectedSighting, setSelectedSighting] = useState<Sighting | null>(null)
-  const [files,          setFiles]          = useState<UploadFile[]>([])
-  const [uploading,      setUploading]      = useState(false)
-  const [uploadedCount,  setUploadedCount]  = useState(0)
+
+  // ── Hotspot / trip / checklist state ──────────────────────────────────────
+  const [hotspots,         setHotspots]         = useState<Hotspot[]>([])
+  const [trips,            setTrips]            = useState<Trip[]>([])
+  const [checklists,       setChecklists]       = useState<Checklist[]>([])
+  const [selectedHotspot,  setSelectedHotspot]  = useState<Hotspot | null>(null)
+  const [selectedTrip,     setSelectedTrip]     = useState<Trip | null>(null)
+  const [selectedChecklist, setSelectedChecklist] = useState<Checklist | null>(null)
+  const [linkLoading,      setLinkLoading]      = useState(false)
+
+  // ── Upload state ──────────────────────────────────────────────────────────
+  const [files,         setFiles]         = useState<UploadFile[]>([])
+  const [uploading,     setUploading]     = useState(false)
+  const [uploadedCount, setUploadedCount] = useState(0)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  // ── Search species ────────────────────────────────────────────────────────
+  // ── Load hotspots / trips / checklists when needed ────────────────────────
   useEffect(() => {
-    if (speciesQuery.length < 2) {
-      setSpeciesList([])
-      return
+    if (context !== 'hotspot' && context !== 'trip' && context !== 'checklist') return
+    setLinkLoading(true)
+
+    async function loadLinkData() {
+      if (context === 'hotspot') {
+        const { data } = await supabase.rpc('wcg_web_get_user_hotspots', { p_user_id: wcgUserId })
+        if (data) setHotspots(data)
+      } else if (context === 'trip') {
+        const { data } = await supabase.rpc('wcg_web_get_user_trips', { p_user_id: wcgUserId })
+        if (data) setTrips(data)
+      } else if (context === 'checklist') {
+        const { data } = await supabase
+          .from('fld_my_checklists')
+          .select('checklist_id:server_id, checklist_name')
+          .eq('user_id', wcgUserId)
+          .order('checklist_start_date', { ascending: false })
+          .limit(100)
+        if (data) setChecklists(data as any)
+      }
+      setLinkLoading(false)
     }
+
+    loadLinkData()
+  }, [context, wcgUserId])
+
+  // ── Species search ────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (speciesQuery.length < 2) { setSpeciesList([]); return }
     const timer = setTimeout(async () => {
       setSpeciesLoading(true)
       const { data } = await supabase.rpc('wcg_web_search_user_species', {
@@ -117,26 +194,28 @@ export default function PhotoUploadModal({ wcgUserId, onClose, onSuccess }: Phot
     return () => clearTimeout(timer)
   }, [speciesQuery, wcgUserId])
 
-  // ── Load sightings for selected species ───────────────────────────────────
+  // ── Select species → load sightings ───────────────────────────────────────
   async function selectSpecies(species: Species) {
     setSelectedSpecies(species)
     setStep('sighting')
     setSightingsLoading(true)
     const { data } = await supabase.rpc('wcg_web_get_species_sightings', {
-      p_user_id:   wcgUserId,
+      p_user_id:    wcgUserId,
       p_species_id: species.species_id,
     })
     if (data) setSightings(data)
     setSightingsLoading(false)
   }
 
-  // ── Select sighting ───────────────────────────────────────────────────────
-  function selectSighting(sighting: Sighting) {
-    setSelectedSighting(sighting)
-    setStep('photos')
+  // ── Context selection ─────────────────────────────────────────────────────
+  function chooseContext(c: Context) {
+    setContext(c)
+    if (c === 'sighting') setStep('species')
+    else if (c === 'none') setStep('photos')
+    else setStep('link')
   }
 
-  // ── Handle file selection ─────────────────────────────────────────────────
+  // ── File handling ─────────────────────────────────────────────────────────
   function handleFiles(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = Array.from(e.target.files ?? [])
     const newFiles: UploadFile[] = selected.map(file => ({
@@ -156,69 +235,116 @@ export default function PhotoUploadModal({ wcgUserId, onClose, onSuccess }: Phot
     })
   }
 
-  // ── Upload ────────────────────────────────────────────────────────────────
+  // ── Build storage path based on context ──────────────────────────────────
+  function buildPaths(fileName: string): { fullPath: string; thumbPath: string } {
+    let folder = 'general'
+    if (context === 'sighting' && selectedSighting) {
+      folder = `sightings/${selectedSighting.sighting_id}`
+    } else if (context === 'hotspot' && selectedHotspot) {
+      folder = `hotspots/${selectedHotspot.hotspot_id}`
+    } else if (context === 'trip' && selectedTrip) {
+      folder = `trips/${selectedTrip.trip_id}`
+    } else if (context === 'checklist' && selectedChecklist) {
+      folder = `checklists/${selectedChecklist.checklist_id}`
+    }
+    return {
+      fullPath:  `${folder}/${fileName}`,
+      thumbPath: `${folder}/thumbs_${fileName}`,
+    }
+  }
+
+  // ── Build insert payload based on context ─────────────────────────────────
+  function buildInsertPayload(fullUrl: string, thumbUrl: string, comment: string) {
+    const base = {
+      p_user_id:         wcgUserId,
+      p_file_path:       fullUrl,
+      p_thumbnail_path:  thumbUrl,
+      p_comment:         comment || null,
+      p_sighting_id:     null as any,
+      p_species_id:      null as any,
+      p_common_name:     null as any,
+      p_scientific_name: null as any,
+      p_sighting_date:   null as any,
+      p_country_id:      null as any,
+      p_country_name:    null as any,
+      p_province_id:     null as any,
+      p_province_name:   null as any,
+      p_hotspot_id:      null as any,
+      p_hotspot_name:    null as any,
+      p_trip_id:         null as any,
+      p_trip_name:       null as any,
+      p_checklist_id:    null as any,
+      p_checklist_name:  null as any,
+      p_pentad_id:       null as any,
+    }
+
+    if (context === 'sighting' && selectedSighting && selectedSpecies) {
+      return {
+        ...base,
+        p_sighting_id:     selectedSighting.sighting_id,
+        p_species_id:      selectedSpecies.species_id,
+        p_common_name:     selectedSpecies.common_name,
+        p_scientific_name: selectedSpecies.scientific_name,
+        p_sighting_date:   selectedSighting.sighting_date,
+        p_country_id:      selectedSighting.country_id,
+        p_country_name:    selectedSighting.country_name,
+        p_province_id:     selectedSighting.province_id,
+        p_province_name:   selectedSighting.province_name,
+        p_hotspot_id:      selectedSighting.hotspot_id,
+        p_hotspot_name:    selectedSighting.hotspot_name,
+        p_trip_id:         selectedSighting.trip_id,
+        p_trip_name:       selectedSighting.trip_name,
+        p_checklist_id:    selectedSighting.checklist_id,
+        p_checklist_name:  selectedSighting.checklist_name,
+        p_pentad_id:       selectedSighting.pentad_id,
+      }
+    }
+
+    if (context === 'hotspot' && selectedHotspot) {
+      return { ...base, p_hotspot_id: selectedHotspot.hotspot_id, p_hotspot_name: selectedHotspot.hotspot_name }
+    }
+
+    if (context === 'trip' && selectedTrip) {
+      return { ...base, p_trip_id: selectedTrip.trip_id, p_trip_name: selectedTrip.trip_name }
+    }
+
+    if (context === 'checklist' && selectedChecklist) {
+      return { ...base, p_checklist_id: selectedChecklist.checklist_id, p_checklist_name: selectedChecklist.checklist_name }
+    }
+
+    return base
+  }
+
+  // ── Run upload ────────────────────────────────────────────────────────────
   async function runUpload() {
-    if (!selectedSighting || files.length === 0) return
+    if (files.length === 0) return
     setUploading(true)
     let uploaded = 0
 
     for (let i = 0; i < files.length; i++) {
       const uf = files[i]
       if (uf.status === 'done') continue
-
       setFiles(prev => prev.map((f, idx) => idx === i ? { ...f, status: 'uploading' } : f))
 
       try {
-        const fileName  = generateFileName(uf.file)
-        const sightingId = selectedSighting.sighting_id
-        const fullPath  = `sightings/${sightingId}/${fileName}`
-        const thumbPath = `sightings/${sightingId}/thumbs_${fileName}`
+        const fileName = generateFileName(uf.file)
+        const { fullPath, thumbPath } = buildPaths(fileName)
 
-        // Resize full image (max 1600px)
         const fullBlob  = await resizeImage(uf.file, 1600)
-        // Resize thumbnail (max 300px)
         const thumbBlob = await resizeImage(uf.file, 300)
 
-        // Upload full image
-        const { error: fullError } = await supabase.storage
-          .from('photos')
-          .upload(fullPath, fullBlob, { contentType: 'image/jpeg', upsert: false })
-        if (fullError) throw new Error(fullError.message)
+        const { error: e1 } = await supabase.storage.from('photos').upload(fullPath, fullBlob, { contentType: 'image/jpeg', upsert: false })
+        if (e1) throw new Error(e1.message)
 
-        // Upload thumbnail
-        const { error: thumbError } = await supabase.storage
-          .from('thumbs')
-          .upload(thumbPath, thumbBlob, { contentType: 'image/jpeg', upsert: false })
-        if (thumbError) throw new Error(thumbError.message)
+        const { error: e2 } = await supabase.storage.from('thumbs').upload(thumbPath, thumbBlob, { contentType: 'image/jpeg', upsert: false })
+        if (e2) throw new Error(e2.message)
 
-        // Build public URLs
         const fullUrl  = `${SUPABASE_URL}/storage/v1/object/public/photos/${fullPath}`
         const thumbUrl = `${SUPABASE_URL}/storage/v1/object/public/thumbs/${thumbPath}`
 
-        // Insert into fld_photos
-        const { error: insertError } = await supabase.rpc('wcg_web_insert_photo', {
-          p_user_id:        wcgUserId,
-          p_file_path:      fullUrl,
-          p_thumbnail_path: thumbUrl,
-          p_sighting_id:    selectedSighting.sighting_id,
-          p_species_id:     selectedSpecies!.species_id,
-          p_common_name:    selectedSpecies!.common_name,
-          p_scientific_name: selectedSpecies!.scientific_name,
-          p_sighting_date:  selectedSighting.sighting_date,
-          p_country_id:     selectedSighting.country_id,
-          p_country_name:   selectedSighting.country_name,
-          p_province_id:    selectedSighting.province_id,
-          p_province_name:  selectedSighting.province_name,
-          p_hotspot_id:     selectedSighting.hotspot_id,
-          p_hotspot_name:   selectedSighting.hotspot_name,
-          p_trip_id:        selectedSighting.trip_id,
-          p_trip_name:      selectedSighting.trip_name,
-          p_checklist_id:   selectedSighting.checklist_id,
-          p_checklist_name: selectedSighting.checklist_name,
-          p_pentad_id:      selectedSighting.pentad_id,
-          p_comment:        uf.comment || null,
-        })
-        if (insertError) throw new Error(insertError.message)
+        const payload = buildInsertPayload(fullUrl, thumbUrl, uf.comment)
+        const { error: e3 } = await supabase.rpc('wcg_web_insert_photo', payload)
+        if (e3) throw new Error(e3.message)
 
         setFiles(prev => prev.map((f, idx) => idx === i ? { ...f, status: 'done' } : f))
         uploaded++
@@ -230,33 +356,82 @@ export default function PhotoUploadModal({ wcgUserId, onClose, onSuccess }: Phot
     }
 
     setUploading(false)
-    if (uploaded > 0) {
-      setTimeout(() => {
-        onSuccess()
-        onClose()
-      }, 1000)
+    if (uploaded > 0) setTimeout(() => { onSuccess(); onClose() }, 1000)
+  }
+
+  // ── Step labels ───────────────────────────────────────────────────────────
+  function getSteps(): string[] {
+    if (context === 'sighting') return ['Context', 'Species', 'Sighting', 'Photos']
+    if (context === 'hotspot' || context === 'trip' || context === 'checklist') return ['Context', 'Link', 'Photos']
+    return ['Context', 'Photos']
+  }
+
+  function getCurrentStepIndex(): number {
+    const steps = getSteps()
+    if (step === 'context') return 0
+    if (step === 'species') return 1
+    if (step === 'sighting') return 2
+    if (step === 'link') return 1
+    if (step === 'photos') return steps.length - 1
+    return 0
+  }
+
+  // ── Context summary for photos step ──────────────────────────────────────
+  function contextSummary() {
+    if (context === 'sighting' && selectedSighting && selectedSpecies) {
+      return (
+        <div className="rounded-xl p-3 mb-4 flex items-center justify-between" style={{ backgroundColor: '#2a3f2a' }}>
+          <div>
+            <p className="text-white text-sm font-medium">{selectedSpecies.common_name}</p>
+            <p className="text-green-400 text-xs">
+              {selectedSighting.sighting_date} · {[selectedSighting.hotspot_name, selectedSighting.province_name, selectedSighting.country_name].filter(Boolean).join(', ')}
+            </p>
+          </div>
+          <button onClick={() => setStep('sighting')} className="text-green-500 text-xs hover:text-white transition-colors">Change</button>
+        </div>
+      )
     }
+    if (context === 'hotspot' && selectedHotspot) {
+      return (
+        <div className="rounded-xl p-3 mb-4 flex items-center justify-between" style={{ backgroundColor: '#2a3f2a' }}>
+          <p className="text-white text-sm font-medium">📍 {selectedHotspot.hotspot_name}</p>
+          <button onClick={() => setStep('link')} className="text-green-500 text-xs hover:text-white transition-colors">Change</button>
+        </div>
+      )
+    }
+    if (context === 'trip' && selectedTrip) {
+      return (
+        <div className="rounded-xl p-3 mb-4 flex items-center justify-between" style={{ backgroundColor: '#2a3f2a' }}>
+          <p className="text-white text-sm font-medium">🧳 {selectedTrip.trip_name}</p>
+          <button onClick={() => setStep('link')} className="text-green-500 text-xs hover:text-white transition-colors">Change</button>
+        </div>
+      )
+    }
+    if (context === 'checklist' && selectedChecklist) {
+      return (
+        <div className="rounded-xl p-3 mb-4 flex items-center justify-between" style={{ backgroundColor: '#2a3f2a' }}>
+          <p className="text-white text-sm font-medium">📋 {selectedChecklist.checklist_name}</p>
+          <button onClick={() => setStep('link')} className="text-green-500 text-xs hover:text-white transition-colors">Change</button>
+        </div>
+      )
+    }
+    return (
+      <div className="rounded-xl p-3 mb-4" style={{ backgroundColor: '#2a3f2a' }}>
+        <p className="text-yellow-400 text-xs">⚠️ No link — photos will have no metadata attached.</p>
+      </div>
+    )
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ backgroundColor: 'rgba(0,0,0,0.75)' }}>
       <div className="w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh]" style={{ backgroundColor: '#1a2e1a' }}>
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-green-900 flex-shrink-0">
           <div>
-            <h2 className="text-white font-semibold" style={{ fontFamily: 'Georgia, serif' }}>
-              Upload Photos
-            </h2>
-            {/* Breadcrumb */}
-            <div className="flex items-center gap-2 mt-1">
-              <span className={`text-xs ${step === 'species' ? 'text-white' : 'text-green-600'}`}>1. Species</span>
-              <span className="text-green-800 text-xs">›</span>
-              <span className={`text-xs ${step === 'sighting' ? 'text-white' : step === 'photos' ? 'text-green-600' : 'text-green-800'}`}>2. Sighting</span>
-              <span className="text-green-800 text-xs">›</span>
-              <span className={`text-xs ${step === 'photos' ? 'text-white' : 'text-green-800'}`}>3. Photos</span>
-            </div>
+            <h2 className="text-white font-semibold" style={{ fontFamily: 'Georgia, serif' }}>Upload Photos</h2>
+            <StepIndicator steps={getSteps()} current={getCurrentStepIndex()} />
           </div>
           <button onClick={onClose} className="text-green-400 hover:text-white text-2xl transition-colors">×</button>
         </div>
@@ -264,10 +439,42 @@ export default function PhotoUploadModal({ wcgUserId, onClose, onSuccess }: Phot
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-4">
 
-          {/* ── Step 1: Species search ── */}
+          {/* ── Step: Context ── */}
+          {step === 'context' && (
+            <div>
+              <p className="text-green-400 text-sm mb-4">What would you like to link your photos to?</p>
+              <div className="grid grid-cols-1 gap-3">
+                {[
+                  { id: 'sighting',  icon: '🔭', label: 'A sighting',   desc: 'Link to a specific species sighting — inherits all location and trip details automatically' },
+                  { id: 'hotspot',   icon: '📍', label: 'A hotspot',    desc: 'Scenic or general photos of one of your birding locations' },
+                  { id: 'trip',      icon: '🧳', label: 'A trip',       desc: 'Photos from a specific trip that are not tied to a particular sighting' },
+                  { id: 'checklist', icon: '📋', label: 'A checklist',  desc: 'Photos from a specific field session' },
+                  { id: 'none',      icon: '📷', label: 'No link',      desc: 'Upload a standalone photo without linking it to any record' },
+                ].map(opt => (
+                  <button
+                    key={opt.id}
+                    onClick={() => chooseContext(opt.id as Context)}
+                    className="text-left px-4 py-3 rounded-xl hover:bg-green-800 transition-colors flex items-start gap-3"
+                    style={{ backgroundColor: '#2a3f2a' }}
+                  >
+                    <span className="text-2xl flex-shrink-0">{opt.icon}</span>
+                    <div>
+                      <p className="text-white text-sm font-medium">{opt.label}</p>
+                      <p className="text-green-500 text-xs mt-0.5">{opt.desc}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── Step: Species search ── */}
           {step === 'species' && (
             <div>
-              <p className="text-green-400 text-sm mb-4">Search for the species you photographed:</p>
+              <div className="flex items-center gap-2 mb-4">
+                <button onClick={() => setStep('context')} className="text-green-500 hover:text-white text-xs transition-colors">← Back</button>
+                <p className="text-green-400 text-sm">Search for the species you photographed:</p>
+              </div>
               <input
                 type="text"
                 value={speciesQuery}
@@ -296,19 +503,10 @@ export default function PhotoUploadModal({ wcgUserId, onClose, onSuccess }: Phot
               {speciesQuery.length >= 2 && !speciesLoading && speciesList.length === 0 && (
                 <p className="text-green-600 text-sm mt-3">No species found matching "{speciesQuery}"</p>
               )}
-              <p className="text-green-700 text-xs mt-4">
-                Can't find the species? You can skip this step and upload without linking to a sighting.
-              </p>
-              <button
-                onClick={() => setStep('photos')}
-                className="text-green-500 text-xs hover:text-green-300 transition-colors mt-1"
-              >
-                Skip → upload without linking
-              </button>
             </div>
           )}
 
-          {/* ── Step 2: Select sighting ── */}
+          {/* ── Step: Select sighting ── */}
           {step === 'sighting' && selectedSpecies && (
             <div>
               <div className="flex items-center gap-2 mb-4">
@@ -326,7 +524,7 @@ export default function PhotoUploadModal({ wcgUserId, onClose, onSuccess }: Phot
                   {sightings.map(s => (
                     <button
                       key={s.sighting_id}
-                      onClick={() => selectSighting(s)}
+                      onClick={() => { setSelectedSighting(s); setStep('photos') }}
                       className="text-left px-4 py-3 rounded-xl hover:bg-green-800 transition-colors"
                       style={{ backgroundColor: '#2a3f2a' }}
                     >
@@ -345,28 +543,70 @@ export default function PhotoUploadModal({ wcgUserId, onClose, onSuccess }: Phot
             </div>
           )}
 
-          {/* ── Step 3: Upload photos ── */}
+          {/* ── Step: Link (hotspot / trip / checklist) ── */}
+          {step === 'link' && (
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <button onClick={() => setStep('context')} className="text-green-500 hover:text-white text-xs transition-colors">← Back</button>
+                <p className="text-green-400 text-sm">
+                  {context === 'hotspot'   ? 'Select a hotspot:'   : ''}
+                  {context === 'trip'      ? 'Select a trip:'      : ''}
+                  {context === 'checklist' ? 'Select a checklist:' : ''}
+                </p>
+              </div>
+              {linkLoading ? (
+                <p className="text-green-500 text-sm">Loading…</p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {context === 'hotspot' && hotspots.map(h => (
+                    <button
+                      key={h.hotspot_id}
+                      onClick={() => { setSelectedHotspot(h); setStep('photos') }}
+                      className="text-left px-4 py-3 rounded-xl hover:bg-green-800 transition-colors"
+                      style={{ backgroundColor: '#2a3f2a' }}
+                    >
+                      <p className="text-white text-sm font-medium">📍 {h.hotspot_name}</p>
+                    </button>
+                  ))}
+                  {context === 'trip' && trips.map(t => (
+                    <button
+                      key={t.trip_id}
+                      onClick={() => { setSelectedTrip(t); setStep('photos') }}
+                      className="text-left px-4 py-3 rounded-xl hover:bg-green-800 transition-colors"
+                      style={{ backgroundColor: '#2a3f2a' }}
+                    >
+                      <p className="text-white text-sm font-medium">🧳 {t.trip_name}</p>
+                    </button>
+                  ))}
+                  {context === 'checklist' && checklists.map(c => (
+                    <button
+                      key={c.checklist_id}
+                      onClick={() => { setSelectedChecklist(c); setStep('photos') }}
+                      className="text-left px-4 py-3 rounded-xl hover:bg-green-800 transition-colors"
+                      style={{ backgroundColor: '#2a3f2a' }}
+                    >
+                      <p className="text-white text-sm font-medium">📋 {c.checklist_name}</p>
+                    </button>
+                  ))}
+                  {context === 'hotspot'   && hotspots.length   === 0 && <p className="text-green-500 text-sm">No hotspots found.</p>}
+                  {context === 'trip'      && trips.length      === 0 && <p className="text-green-500 text-sm">No trips found.</p>}
+                  {context === 'checklist' && checklists.length === 0 && <p className="text-green-500 text-sm">No checklists found.</p>}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Step: Photos ── */}
           {step === 'photos' && (
             <div>
-              {/* Selected sighting summary */}
-              {selectedSighting && (
-                <div className="rounded-xl p-3 mb-4 flex items-center justify-between" style={{ backgroundColor: '#2a3f2a' }}>
-                  <div>
-                    <p className="text-white text-sm font-medium">{selectedSpecies?.common_name}</p>
-                    <p className="text-green-400 text-xs">{selectedSighting.sighting_date} · {[selectedSighting.hotspot_name, selectedSighting.province_name, selectedSighting.country_name].filter(Boolean).join(', ')}</p>
-                  </div>
-                  <button onClick={() => setStep('sighting')} className="text-green-500 text-xs hover:text-white transition-colors">Change</button>
-                </div>
-              )}
-
-              {!selectedSighting && (
-                <div className="rounded-xl p-3 mb-4" style={{ backgroundColor: '#2a3f2a' }}>
-                  <p className="text-yellow-400 text-xs">⚠️ Uploading without linking to a sighting — photos will have no species or location metadata.</p>
-                </div>
-              )}
+              {/* Context summary */}
+              {contextSummary()}
 
               {/* File picker */}
-              <label className="flex flex-col items-center justify-center w-full h-28 rounded-xl border-2 border-dashed border-green-700 cursor-pointer hover:border-green-500 transition-colors mb-4" style={{ backgroundColor: '#2a3f2a' }}>
+              <label
+                className="flex flex-col items-center justify-center w-full h-28 rounded-xl border-2 border-dashed border-green-700 cursor-pointer hover:border-green-500 transition-colors mb-4"
+                style={{ backgroundColor: '#2a3f2a' }}
+              >
                 <span className="text-2xl mb-1">📷</span>
                 <span className="text-green-300 text-sm">Click to select photos</span>
                 <span className="text-green-600 text-xs mt-0.5">JPG, PNG · Multiple allowed</span>
@@ -417,7 +657,7 @@ export default function PhotoUploadModal({ wcgUserId, onClose, onSuccess }: Phot
           <div className="px-6 py-4 border-t border-green-900 flex-shrink-0 flex items-center justify-between">
             <p className="text-green-400 text-sm">
               {uploading
-                ? `Uploading ${uploadedCount} of ${files.filter(f => f.status !== 'done').length + uploadedCount}…`
+                ? `Uploading ${uploadedCount} of ${files.length}…`
                 : `${files.length} photo${files.length > 1 ? 's' : ''} selected`
               }
             </p>
