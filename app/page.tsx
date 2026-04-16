@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { supabase } from '../lib/supabase'
 import Map from './components/Map'
 import PhotoGallery from './components/PhotoGallery'
@@ -8,69 +7,62 @@ export const revalidate = 60
 
 export default async function Home() {
 
-  // Fetch all stats in one call
-  const { data: statsData } = await supabase
-    .rpc('wcg_web_get_stats')
+  // ── Data fetching ─────────────────────────────────────────────────────────
 
-  const stats = statsData as any
-  const totalSightings = stats?.total_sightings ?? 0
-  const uniqueSpecies = stats?.unique_species ?? 0
+  const { data: statsData } = await supabase.rpc('wcg_web_get_stats')
+  const stats        = statsData as any
+  const totalSightings  = stats?.total_sightings  ?? 0
+  const uniqueSpecies   = stats?.unique_species   ?? 0
   const uniqueCountries = stats?.unique_countries ?? 0
-  const uniqueYears = stats?.unique_years ?? 0
+  const uniqueYears     = stats?.unique_years     ?? 0
 
-  // Fetch community stats
-  const { data: communityData } = await supabase
-    .rpc('wcg_web_get_community_stats')
-
-  const community = communityData?.[0]
-  const totalUsers = community?.total_users ?? 0
+  const { data: communityData } = await supabase.rpc('wcg_web_get_community_stats')
+  const community     = communityData?.[0]
+  const totalUsers    = community?.total_users    ?? 0
   const activeUsers7d = community?.active_users_7d ?? 0
 
+  const { data: mapSightings } = await supabase.rpc('wcg_web_get_map_clusters')
 
-  // Fetch clustered map points
-  const { data: mapSightings } = await supabase
-    .rpc('wcg_web_get_map_clusters')
-
-  // Fetch gallery photos
-  const { data: galleryPhotosRaw } = await supabase
-    .rpc('wcg_web_get_gallery_photos')
-
-  // Shuffle on the server so client and server match
-  const galleryPhotos = galleryPhotosRaw 
+  const { data: galleryPhotosRaw } = await supabase.rpc('wcg_web_get_gallery_photos')
+  const galleryPhotos = galleryPhotosRaw
     ? [...galleryPhotosRaw].sort(() => Math.random() - 0.5)
     : []
 
-  // Fetch recent sightings via RPC
-  const { data: recentSightings } = await supabase
-    .rpc('wcg_web_get_recent_sightings')
+  const { data: animalTypeStats } = await supabase.rpc('wcg_web_get_animal_type_stats')
+
+  // ── Animal type emoji map ─────────────────────────────────────────────────
+
+  const animalTypeEmoji: Record<string, string> = {
+    'Bird':       '🐦', 'Birds':       '🐦',
+    'Mammal':     '🦁', 'Mammals':     '🦁',
+    'Reptile':    '🦎', 'Reptiles':    '🦎',
+    'Amphibian':  '🐸', 'Amphibians':  '🐸',
+    'Fish':       '🐟', 'Fishes':      '🐟',
+    'Insect':     '🦋', 'Insects':     '🦋',
+    'Spider':     '🕷️', 'Spiders':     '🕷️',
+    'Plant':      '🌿', 'Plants':      '🌿',
+  }
+
+  // ── Page ──────────────────────────────────────────────────────────────────
 
   return (
     <main className="min-h-screen" style={{ backgroundColor: '#d4e8d4' }}>
 
-  
-{/* Hero with image */}
+      {/* ── Hero ── */}
       <div className="relative h-96 w-full overflow-hidden">
         <img
           src="/hero.jpg"
           alt="Wildlife hero"
           className="w-full h-full object-cover object-center"
         />
-        {/* Dark overlay */}
         <div className="absolute inset-0 bg-black/50 pointer-events-none" />
 
-
-
-
-        {/* Header overlaid on image */}
+        {/* Nav */}
         <div className="absolute top-0 left-0 right-0">
           <NavBar transparent={true} />
         </div>
 
-
-
-
-
-        {/* Hero text overlaid on image */}
+        {/* Hero text */}
         <div className="absolute inset-0 flex flex-col items-center justify-center text-white text-center px-6 pointer-events-none">
           <h1 className="text-5xl font-bold mb-4 drop-shadow-lg" style={{ fontFamily: 'Georgia, serif' }}>
             Wildgoosechase
@@ -80,61 +72,93 @@ export default async function Home() {
           </p>
         </div>
 
-        {/* Stats overlaid at bottom of hero */}
-        <div className="absolute bottom-0 left-0 right-0 py-6 px-6">          
+        {/* Stats strip */}
+        <div className="absolute bottom-0 left-0 right-0 py-6 px-6">
           <div className="max-w-5xl mx-auto grid grid-cols-3 md:grid-cols-6 gap-6 text-center">
-            <div>
-              <div className="text-3xl font-bold text-white">{Number(totalSightings).toLocaleString()}</div>
-              <div className="text-green-300 text-xs mt-1 uppercase tracking-wide">Total Sightings</div>
-            </div>
-            <div>
-              <div className="text-3xl font-bold text-white">{Number(uniqueSpecies).toLocaleString()}</div>
-              <div className="text-green-300 text-xs mt-1 uppercase tracking-wide">Species Recorded</div>
-            </div>
-            <div>
-              <div className="text-3xl font-bold text-white">{Number(uniqueCountries)}</div>
-              <div className="text-green-300 text-xs mt-1 uppercase tracking-wide">Countries Visited</div>
-            </div>
-            <div>
-              <div className="text-3xl font-bold text-white">{Number(uniqueYears)}</div>
-              <div className="text-green-300 text-xs mt-1 uppercase tracking-wide">Years of Data</div>
-            </div>
-
-            <div>
-              <div className="text-3xl font-bold text-white">{Number(totalUsers)}</div>
-              <div className="text-green-300 text-xs mt-1 uppercase tracking-wide">Registered Users</div>
-            </div>
-            <div>
-              <div className="text-3xl font-bold text-white">{Number(activeUsers7d)}</div>
-              <div className="text-green-300 text-xs mt-1 uppercase tracking-wide">Active This Week</div>
-            </div>
-
+            {[
+              { value: Number(totalSightings).toLocaleString(),  label: 'Total Sightings'   },
+              { value: Number(uniqueSpecies).toLocaleString(),   label: 'Species Recorded'  },
+              { value: Number(uniqueCountries).toLocaleString(), label: 'Countries Visited' },
+              { value: Number(uniqueYears).toLocaleString(),     label: 'Years of Data'     },
+              { value: Number(totalUsers).toLocaleString(),      label: 'Registered Users'  },
+              { value: Number(activeUsers7d).toLocaleString(),   label: 'Active This Week'  },
+            ].map(stat => (
+              <div key={stat.label}>
+                <div className="text-3xl font-bold text-white">{stat.value}</div>
+                <div className="text-green-300 text-xs mt-1 uppercase tracking-wide">{stat.label}</div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Photo gallery */}
+      {/* ── Photo gallery ── */}
       <PhotoGallery photos={galleryPhotos || []} />
 
-      {/* Divider */}
+      {/* ── Divider ── */}
       <div className="h-2 bg-green-800 w-full" />
 
- {/* Two column layout */}
+      {/* ── Animal type stats grid ── */}
+      <div className="px-6 py-10" style={{ backgroundColor: '#d4e8d4' }}>
+        <h2
+          className="text-2xl text-green-900 mb-2 text-center"
+          style={{ fontFamily: 'Georgia, serif' }}
+        >
+          Wildlife by Type
+        </h2>
+        <p className="text-green-700 text-sm text-center mb-6">
+          A breakdown of all sightings recorded across the Wildgoosechase community
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
+          {(animalTypeStats as any[])?.map((type: any) => (
+            <div
+              key={type.animal_type_id}
+              className="bg-white rounded-2xl border border-stone-200 p-5 shadow-sm hover:shadow-md transition-shadow"
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-3xl">{animalTypeEmoji[type.animal_type_name] ?? '🐾'}</span>
+                <h3
+                  className="text-green-900 font-semibold text-lg"
+                  style={{ fontFamily: 'Georgia, serif' }}
+                >
+                  {type.animal_type_name}
+                </h3>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div>
+                  <p className="text-green-800 text-xl font-bold">{Number(type.total_sightings).toLocaleString()}</p>
+                  <p className="text-stone-400 text-xs mt-0.5">Sightings</p>
+                </div>
+                <div>
+                  <p className="text-green-800 text-xl font-bold">{Number(type.total_species).toLocaleString()}</p>
+                  <p className="text-stone-400 text-xs mt-0.5">Species</p>
+                </div>
+                <div>
+                  <p className="text-green-800 text-xl font-bold">{Number(type.total_countries).toLocaleString()}</p>
+                  <p className="text-stone-400 text-xs mt-0.5">Countries</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Divider ── */}
+      <div className="h-2 bg-green-800 w-full" />
+
+      {/* ── Two column layout ── */}
       <div className="px-3 py-6 flex gap-4">
 
-        {/* Left column — Links & Organisations (1/3) */}
+        {/* Left — Conservation & Resources */}
         <div className="w-1/3 flex-shrink-0 flex flex-col gap-4 bg-white rounded-2xl border border-stone-200 p-4">
-
           <h2 className="text-lg font-bold text-stone-700">🌍 Conservation & Resources</h2>
-
-{/* Organisation cards */}
           {[
-            { name: "BirdLife South Africa", desc: "Protecting birds and their habitats", url: "https://www.birdlife.org.za", emoji: "🐦" },
-            { name: "SABAP2", desc: "South African Bird Atlas Project", url: "http://sabap2.adu.org.za", emoji: "🗺️" },
-            { name: "iNaturalist", desc: "Record and identify wildlife worldwide", url: "https://www.inaturalist.org", emoji: "🔬" },
-            { name: "eBird", desc: "Global bird sighting database by Cornell", url: "https://ebird.org", emoji: "📋" },
-            { name: "WWF South Africa", desc: "Wildlife and conservation news", url: "https://www.wwf.org.za", emoji: "🐾" },
-          ].map((org) => (
+            { name: 'BirdLife South Africa', desc: 'Protecting birds and their habitats',       url: 'https://www.birdlife.org.za',    emoji: '🐦' },
+            { name: 'SABAP2',                desc: 'South African Bird Atlas Project',          url: 'http://sabap2.adu.org.za',       emoji: '🗺️' },
+            { name: 'iNaturalist',           desc: 'Record and identify wildlife worldwide',    url: 'https://www.inaturalist.org',    emoji: '🔬' },
+            { name: 'eBird',                 desc: 'Global bird sighting database by Cornell',  url: 'https://ebird.org',              emoji: '📋' },
+            { name: 'WWF South Africa',      desc: 'Wildlife and conservation news',            url: 'https://www.wwf.org.za',         emoji: '🐾' },
+          ].map(org => (
             <a
               key={org.name}
               href={org.url}
@@ -155,39 +179,15 @@ export default async function Home() {
           ))}
         </div>
 
-        {/* Right column — Map, Animal of Day, Recent Sightings (2/3) */}
-        <div className="flex-1 flex flex-col gap-6 bg-white rounded-2xl border border-stone-200 p-4">
-
-          {/* Map */}
-          <div>
-            <h2 className="text-lg font-bold text-stone-700 mb-3">🗺️ Sighting Locations</h2>
-            <Map points={mapSightings || []} theme="light" height={750} />
-          </div>
-
-
-          {/* Recent sightings */}
-          <div>
-            <h2 className="text-lg font-bold text-stone-700 mb-3">🔭 Recent Sightings</h2>
-            <div className="bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden">
-              {recentSightings?.map((s: any, i: number) => (
-                <div key={s.sighting_id} className={`flex items-center justify-between px-5 py-4 ${i % 2 === 0 ? 'bg-white' : 'bg-stone-50'}`}>
-                  <div>
-                    <div className="font-semibold text-stone-800">{s.common_name}</div>
-                    <div className="text-sm text-stone-400 italic">{s.scientific_name}</div>
-                  </div>
-                  <div className="text-right text-sm text-stone-500">
-                    <div>{s.sighting_date}</div>
-                    <div>{s.province_name}{s.country_name ? `, ${s.country_name}` : ''}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
+        {/* Right — Map */}
+        <div className="flex-1 bg-white rounded-2xl border border-stone-200 p-4">
+          <h2 className="text-lg font-bold text-stone-700 mb-3">🗺️ Sighting Locations</h2>
+          <Map points={mapSightings || []} theme="light" height={750} />
         </div>
+
       </div>
 
-      {/* Call to action */}
+      {/* ── Call to action ── */}
       <div className="bg-green-800 text-white py-16 px-6 text-center">
         <div className="max-w-2xl mx-auto">
           <div className="text-5xl mb-4">🦢</div>
@@ -195,7 +195,7 @@ export default async function Home() {
             Start tracking your own wildlife encounters
           </h2>
           <p className="text-green-200 text-lg mb-8 leading-relaxed">
-            Wildgoosechase is a free Android app for recording and exploring your wildlife sightings. 
+            Wildgoosechase is a free Android app for recording and exploring your wildlife sightings.
             Build your life list, track your trips, and map every encounter with the wild.
           </p>
           <div className="flex gap-4 justify-center flex-wrap">
@@ -205,17 +205,18 @@ export default async function Home() {
             >
               📱 Download for Android
             </a>
-              <a
+            <a
               href="#"
-              className="border-2 border-white text-white font-bold px-8 py-3 rounded-full hover:bg-white hover:text-green-800 transition-colors">
+              className="border-2 border-white text-white font-bold px-8 py-3 rounded-full hover:bg-white hover:text-green-800 transition-colors"
+            >
               Learn More
             </a>
           </div>
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="bg-green-900 text-green-200 text-center py-6 text-sm mt-8">
+      {/* ── Footer ── */}
+      <footer className="bg-green-900 text-green-200 text-center py-6 text-sm">
         <p>🦢 Wildgoosechase — Personal Wildlife Tracker</p>
         <p className="mt-1 text-green-400">Built with Next.js & Supabase</p>
       </footer>
