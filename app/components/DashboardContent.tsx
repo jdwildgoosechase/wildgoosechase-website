@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import Map from './Map'
 import ImportTab from './ImportTab'
+import GalleryTab from './GalleryTab'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -380,8 +381,13 @@ export default function DashboardContent({ wcgUserId, userName, isOwner }: Dashb
           <SettingsTab wcgUserId={wcgUserId} />
         )}
 
+        {/* Gallery tab */}
+        {activeTab === 'gallery' && (
+          <GalleryTab wcgUserId={wcgUserId} />
+        )}
+
         {/* Placeholder tabs */}
-        {activeTab !== 'overview' && activeTab !== 'import' && activeTab !== 'settings' && (
+        {activeTab !== 'overview' && activeTab !== 'import' && activeTab !== 'settings' && activeTab !== 'gallery' && (
           <div className="flex items-center justify-center h-64 rounded-2xl" style={{ backgroundColor: '#2a3f2a' }}>
             <div className="text-center">
               <div className="text-4xl mb-3">{TABS.find(t => t.id === activeTab)?.icon}</div>
