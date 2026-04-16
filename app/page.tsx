@@ -4,6 +4,8 @@ import Map from './components/Map'
 import PhotoGallery from './components/PhotoGallery'
 import NavBar from './components/NavBar'
 
+export const revalidate = 60
+
 export default async function Home() {
 
   // Fetch all stats in one call
