@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../../lib/supabase'
+import PhotoUploadModal from './PhotoUploadModal'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -142,6 +143,7 @@ export default function GalleryTab({ wcgUserId }: GalleryTabProps) {
   const [dateFrom,       setDateFrom]       = useState('')
   const [dateTo,         setDateTo]         = useState('')
   const [speciesInput,   setSpeciesInput]   = useState('')
+  const [showUpload,     setShowUpload]     = useState(false)
 
   // ── Load filter options ───────────────────────────────────────────────────
   useEffect(() => {
@@ -235,6 +237,15 @@ export default function GalleryTab({ wcgUserId }: GalleryTabProps) {
 
       {/* ── Filters ── */}
       <div className="rounded-2xl p-4" style={{ backgroundColor: '#2a3f2a' }}>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-white font-semibold" style={{ fontFamily: 'Georgia, serif' }}>My Photos</h2>
+          <button
+            onClick={() => setShowUpload(true)}
+            className="px-4 py-2 rounded-lg text-sm font-medium bg-green-700 hover:bg-green-600 text-white transition-colors"
+          >
+            📷 Upload Photos
+          </button>
+        </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
 
           {/* Species search */}
@@ -399,6 +410,19 @@ export default function GalleryTab({ wcgUserId }: GalleryTabProps) {
             </div>
           )}
         </>
+      )}
+
+      {/* Upload modal */}
+      {showUpload && (
+        <PhotoUploadModal
+          wcgUserId={wcgUserId}
+          onClose={() => setShowUpload(false)}
+          onSuccess={() => {
+            setShowUpload(false)
+            setOffset(0)
+            loadPhotos(true)
+          }}
+        />
       )}
 
     </div>
