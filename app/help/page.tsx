@@ -172,9 +172,9 @@ export default function HelpPage() {
               A lifer is the first time you have ever recorded a particular species. The Latest Lifer card shows the most recent species you saw for the first time — the species, date, and location of that first sighting.
             </p>
 
-            <SubHeading>What is the On This Day card?</SubHeading>
+            <SubHeading>What is the Lifer On This Day card?</SubHeading>
             <p className="text-stone-600 text-sm leading-relaxed">
-              If you have a sighting recorded on today's date in a previous year, the On This Day card highlights it. It is a fun reminder of what you were seeing on this date in past years. If you have no sightings on today's date in previous years the card does not appear.
+              The Lifer On This Day card highlights a species you recorded for the very first time on today's date in a previous year. For example if you saw your first African Fish Eagle on this date in 2019, that sighting is celebrated on the card. It is a meaningful reminder of landmark sightings from your birding history. The card only appears if you have a lifer that falls on today's date in a previous year — if not, it simply does not show.
             </p>
             <ScreenshotPlaceholder label="Dashboard overview with lifer and on this day cards" />
 

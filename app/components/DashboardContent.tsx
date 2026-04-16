@@ -326,7 +326,7 @@ export default function DashboardContent({ wcgUserId, userName, isOwner }: Dashb
                     <div className="flex-1 rounded-2xl p-3 flex items-center gap-3 border border-blue-700" style={{ backgroundColor: '#1a2a3a' }}>
                       <Thumb url={onThisDay.thumbnail_url} alt={onThisDay.common_name} emoji="📅" />
                       <div className="min-w-0">
-                        <p className="text-blue-400 text-xs font-semibold uppercase tracking-wide mb-0.5">📅 On This Day</p>
+                        <p className="text-blue-400 text.xs font-semibold uppercase tracking-wide mb-0.5">📅 Lifer On This Day</p>
                         <p className="text-white text-sm font-medium truncate">{onThisDay.common_name}</p>
                         <p className="text-green-400 text-xs italic truncate">{onThisDay.scientific_name}</p>
                         <p className="text-green-500 text-xs mt-0.5 truncate">{onThisDay.sighting_year} · {[onThisDay.province_name, onThisDay.country_name].filter(Boolean).join(', ')}</p>
