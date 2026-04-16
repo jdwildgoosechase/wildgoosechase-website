@@ -10,7 +10,7 @@ export default async function Home() {
   // ── Data fetching ─────────────────────────────────────────────────────────
 
   const { data: statsData } = await supabase.rpc('wcg_web_get_stats')
-  const stats        = statsData as any
+  const stats           = statsData as any
   const totalSightings  = stats?.total_sightings  ?? 0
   const uniqueSpecies   = stats?.unique_species   ?? 0
   const uniqueCountries = stats?.unique_countries ?? 0
@@ -18,7 +18,7 @@ export default async function Home() {
 
   const { data: communityData } = await supabase.rpc('wcg_web_get_community_stats')
   const community     = communityData?.[0]
-  const totalUsers    = community?.total_users    ?? 0
+  const totalUsers    = community?.total_users     ?? 0
   const activeUsers7d = community?.active_users_7d ?? 0
 
   const { data: mapSightings } = await supabase.rpc('wcg_web_get_map_clusters')
@@ -33,17 +33,15 @@ export default async function Home() {
   // ── Animal type emoji map ─────────────────────────────────────────────────
 
   const animalTypeEmoji: Record<string, string> = {
-    'Bird':       '🐦', 'Birds':       '🐦',
-    'Mammal':     '🦁', 'Mammals':     '🦁',
-    'Reptile':    '🦎', 'Reptiles':    '🦎',
-    'Amphibian':  '🐸', 'Amphibians':  '🐸',
-    'Fish':       '🐟', 'Fishes':      '🐟',
-    'Insect':     '🦋', 'Insects':     '🦋',
-    'Spider':     '🕷️', 'Spiders':     '🕷️',
-    'Plant':      '🌿', 'Plants':      '🌿',
+    'Bird':      '🐦', 'Birds':      '🐦',
+    'Mammal':    '🦁', 'Mammals':    '🦁',
+    'Reptile':   '🦎', 'Reptiles':   '🦎',
+    'Amphibian': '🐸', 'Amphibians': '🐸',
+    'Fish':      '🐟', 'Fishes':     '🐟',
+    'Insect':    '🦋', 'Insects':    '🦋',
+    'Spider':    '🕷️', 'Spiders':    '🕷️',
+    'Plant':     '🌿', 'Plants':     '🌿',
   }
-
-  // ── Page ──────────────────────────────────────────────────────────────────
 
   return (
     <main className="min-h-screen" style={{ backgroundColor: '#d4e8d4' }}>
@@ -98,75 +96,75 @@ export default async function Home() {
       {/* ── Divider ── */}
       <div className="h-2 bg-green-800 w-full" />
 
-      {/* ── Animal type stats grid ── */}
-      <div className="px-6 py-10" style={{ backgroundColor: '#d4e8d4' }}>
-        <h2
-          className="text-2xl text-green-900 mb-2 text-center"
-          style={{ fontFamily: 'Georgia, serif' }}
-        >
-          Wildlife by Type
-        </h2>
-        <p className="text-green-700 text-sm text-center mb-6">
-          A breakdown of all sightings recorded across the Wildgoosechase community
-        </p>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
-          {(animalTypeStats as any[])?.map((type: any) => (
-            <div
-              key={type.animal_type_id}
-              className="bg-white rounded-2xl border border-stone-200 p-5 shadow-sm hover:shadow-md transition-shadow"
+      {/* ── Main content — two columns ── */}
+      <div className="px-4 py-8 flex gap-4 items-start">
+
+        {/* ── Left column — Wildlife by Type ── */}
+        <div className="w-1/3 flex-shrink-0 flex flex-col gap-3">
+          <div className="bg-white rounded-2xl border border-stone-200 p-5 shadow-sm">
+            <h2
+              className="text-xl text-green-900 mb-1"
+              style={{ fontFamily: 'Georgia, serif' }}
             >
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-3xl">{animalTypeEmoji[type.animal_type_name] ?? '🐾'}</span>
-                <h3
-                  className="text-green-900 font-semibold text-lg"
-                  style={{ fontFamily: 'Georgia, serif' }}
+              Wildlife by Type
+            </h2>
+            <p className="text-stone-400 text-xs mb-4">
+              All sightings recorded across the Wildgoosechase community
+            </p>
+
+            <div className="flex flex-col gap-3">
+              {(animalTypeStats as any[])?.map((type: any) => (
+                <div
+                  key={type.animal_type_id}
+                  className="rounded-xl p-3 border border-stone-100"
+                  style={{ backgroundColor: '#f8faf8' }}
                 >
-                  {type.animal_type_name}
-                </h3>
-              </div>
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div>
-                  <p className="text-green-800 text-xl font-bold">{Number(type.total_sightings).toLocaleString()}</p>
-                  <p className="text-stone-400 text-xs mt-0.5">Sightings</p>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xl">{animalTypeEmoji[type.animal_type_name] ?? '🐾'}</span>
+                    <h3
+                      className="text-green-900 font-semibold"
+                      style={{ fontFamily: 'Georgia, serif' }}
+                    >
+                      {type.animal_type_name}
+                    </h3>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div>
+                      <p className="text-green-800 text-lg font-bold">{Number(type.total_sightings).toLocaleString()}</p>
+                      <p className="text-stone-400 text-xs">Sightings</p>
+                    </div>
+                    <div>
+                      <p className="text-green-800 text-lg font-bold">{Number(type.total_species).toLocaleString()}</p>
+                      <p className="text-stone-400 text-xs">Species</p>
+                    </div>
+                    <div>
+                      <p className="text-green-800 text-lg font-bold">{Number(type.total_countries).toLocaleString()}</p>
+                      <p className="text-stone-400 text-xs">Countries</p>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-green-800 text-xl font-bold">{Number(type.total_species).toLocaleString()}</p>
-                  <p className="text-stone-400 text-xs mt-0.5">Species</p>
-                </div>
-                <div>
-                  <p className="text-green-800 text-xl font-bold">{Number(type.total_countries).toLocaleString()}</p>
-                  <p className="text-stone-400 text-xs mt-0.5">Countries</p>
-                </div>
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
 
-      {/* ── Divider ── */}
-      <div className="h-2 bg-green-800 w-full" />
-
-      {/* ── Two column layout ── */}
-      <div className="px-3 py-6 flex gap-4">
-
-        {/* Left — Conservation & Resources */}
-        <div className="w-1/3 flex-shrink-0 flex flex-col gap-4 bg-white rounded-2xl border border-stone-200 p-4">
-          <h2 className="text-lg font-bold text-stone-700">🌍 Conservation & Resources</h2>
-          {[
-            { name: 'BirdLife South Africa', desc: 'Protecting birds and their habitats',       url: 'https://www.birdlife.org.za',    emoji: '🐦' },
-            { name: 'SABAP2',                desc: 'South African Bird Atlas Project',          url: 'http://sabap2.adu.org.za',       emoji: '🗺️' },
-            { name: 'iNaturalist',           desc: 'Record and identify wildlife worldwide',    url: 'https://www.inaturalist.org',    emoji: '🔬' },
-            { name: 'eBird',                 desc: 'Global bird sighting database by Cornell',  url: 'https://ebird.org',              emoji: '📋' },
-            { name: 'WWF South Africa',      desc: 'Wildlife and conservation news',            url: 'https://www.wwf.org.za',         emoji: '🐾' },
-          ].map(org => (
-            <a
-              key={org.name}
-              href={org.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-stone-50 rounded-xl border border-stone-200 p-4 hover:border-green-400 hover:shadow-md transition-all group"
-            >
-              <div className="flex items-center gap-3">
+          {/* Conservation & Resources — commented out for now */}
+          {/*
+          <div className="bg-white rounded-2xl border border-stone-200 p-4">
+            <h2 className="text-lg font-bold text-stone-700 mb-3">🌍 Conservation & Resources</h2>
+            {[
+              { name: 'BirdLife South Africa', desc: 'Protecting birds and their habitats',      url: 'https://www.birdlife.org.za',  emoji: '🐦' },
+              { name: 'SABAP2',                desc: 'South African Bird Atlas Project',         url: 'http://sabap2.adu.org.za',     emoji: '🗺️' },
+              { name: 'iNaturalist',           desc: 'Record and identify wildlife worldwide',   url: 'https://www.inaturalist.org',  emoji: '🔬' },
+              { name: 'eBird',                 desc: 'Global bird sighting database by Cornell', url: 'https://ebird.org',            emoji: '📋' },
+              { name: 'WWF South Africa',      desc: 'Wildlife and conservation news',           url: 'https://www.wwf.org.za',       emoji: '🐾' },
+            ].map(org => (
+              
+                key={org.name}
+                href={org.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-stone-50 rounded-xl border border-stone-200 p-4 hover:border-green-400 hover:shadow-md transition-all group flex items-center gap-3 mb-3"
+              >
                 <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-xl flex-shrink-0">
                   {org.emoji}
                 </div>
@@ -174,13 +172,15 @@ export default async function Home() {
                   <div className="font-semibold text-stone-800 text-sm group-hover:text-green-700 transition-colors">{org.name}</div>
                   <div className="text-xs text-stone-400 mt-0.5">{org.desc}</div>
                 </div>
-              </div>
-            </a>
-          ))}
+              </a>
+            ))}
+          </div>
+          */}
+
         </div>
 
-        {/* Right — Map */}
-        <div className="flex-1 bg-white rounded-2xl border border-stone-200 p-4">
+        {/* ── Right column — Map ── */}
+        <div className="flex-1 bg-white rounded-2xl border border-stone-200 p-4 shadow-sm">
           <h2 className="text-lg font-bold text-stone-700 mb-3">🗺️ Sighting Locations</h2>
           <Map points={mapSightings || []} theme="light" height={750} />
         </div>
