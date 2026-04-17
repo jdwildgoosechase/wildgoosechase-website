@@ -73,14 +73,17 @@ export default function Map({ points, theme = 'dark', height = 500 }: MapProps) 
       }).addTo(map)
 
       const maxCount = Math.max(...points.map(p => p.sighting_count))
-
+      const minCount = Math.min(...points.map(p => p.sighting_count))
       points.forEach(point => {
         if (point.latitude && point.longitude) {
-          const intensity = Math.sqrt(point.sighting_count / maxCount)
-          const fillOpacity = 0.2 + (intensity * 0.75)
-
+          // Normalise on a log scale so low-count points are still visible
+          const logIntensity = maxCount === minCount ? 1 :
+            (Math.log(point.sighting_count) - Math.log(minCount)) /
+            (Math.log(maxCount) - Math.log(minCount))
+          const fillOpacity = 0.35 + (logIntensity * 0.65)
+          const radius = 5 + (logIntensity * 8)
           const circle = L.default.circleMarker([point.latitude, point.longitude], {
-            radius: 7,
+            radius,
             fillColor: '#388E3C',
             color: '#1B5E20',
             weight: 1,
