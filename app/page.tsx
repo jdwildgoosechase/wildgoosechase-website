@@ -9,6 +9,9 @@ export default async function Home() {
 
   // ── Data fetching ─────────────────────────────────────────────────────────
 
+  const timestamp = Date.now()
+  console.log('Fetching fresh data at:', timestamp)
+
   const { data: statsData } = await supabase.rpc('wcg_web_get_stats')
   const stats           = statsData as any
   const totalSightings  = stats?.total_sightings  ?? 0
@@ -21,7 +24,10 @@ export default async function Home() {
   const totalUsers    = community?.total_users     ?? 0
   const activeUsers7d = community?.active_users_7d ?? 0
 
-  const { data: mapSightings } = await supabase.rpc('wcg_web_get_map_clusters')
+  const { data: mapSightings } = await supabase
+    .rpc('wcg_web_get_map_clusters', { grid_size: 0.5 })
+
+  console.log('Map clusters count:', mapSightings?.length)
 
   const { data: galleryPhotosRaw } = await supabase.rpc('wcg_web_get_gallery_photos')
   const galleryPhotos = galleryPhotosRaw

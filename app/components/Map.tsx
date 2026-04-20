@@ -1,5 +1,4 @@
 'use client'
-
 import { useEffect, useRef } from 'react'
 import 'leaflet/dist/leaflet.css'
 
@@ -22,7 +21,6 @@ export default function Map({ points, theme = 'dark', height = 500 }: MapProps) 
   useEffect(() => {
     if (typeof window === 'undefined') return
     if (!containerRef.current) return
-
     if (mapRef.current) {
       mapRef.current.remove()
       mapRef.current = null
@@ -34,16 +32,16 @@ export default function Map({ points, theme = 'dark', height = 500 }: MapProps) 
 
       const southWest = L.default.latLng(-90, -180)
       const northEast = L.default.latLng(90, 180)
-      const bounds = L.default.latLngBounds(southWest, northEast)
+      const bounds    = L.default.latLngBounds(southWest, northEast)
 
       const map = L.default.map(containerRef.current, {
-        worldCopyJump: false,
-        maxBounds: bounds,
-        maxBoundsViscosity: 1.0,
-        scrollWheelZoom: false,
-        dragging: true,
-        minZoom: 2,
-        maxZoom: 18,
+        worldCopyJump:        false,
+        maxBounds:            bounds,
+        maxBoundsViscosity:   1.0,
+        scrollWheelZoom:      false,
+        dragging:             true,
+        minZoom:              2,
+        maxZoom:              18,
       }).setView([20, 20], 2)
 
       mapRef.current = map
@@ -51,15 +49,11 @@ export default function Map({ points, theme = 'dark', height = 500 }: MapProps) 
       let isDragging = false
       containerRef.current.addEventListener('mousedown', () => { isDragging = true })
       window.addEventListener('mouseup', () => { isDragging = false })
-
       containerRef.current.addEventListener('click', () => {
         map.scrollWheelZoom.enable()
       })
-
       containerRef.current.addEventListener('mouseleave', () => {
-        if (!isDragging) {
-          map.scrollWheelZoom.disable()
-        }
+        if (!isDragging) map.scrollWheelZoom.disable()
       })
 
       const tileUrl = theme === 'light'
@@ -69,28 +63,22 @@ export default function Map({ points, theme = 'dark', height = 500 }: MapProps) 
       L.default.tileLayer(tileUrl, {
         attribution: '© OpenStreetMap contributors © CARTO',
         noWrap: true,
-        bounds: bounds,
+        bounds,
       }).addTo(map)
 
       const maxCount = Math.max(...points.map(p => p.sighting_count))
-      const minCount = Math.min(...points.map(p => p.sighting_count))
       points.forEach(point => {
         if (point.latitude && point.longitude) {
-          // Normalise on a log scale so low-count points are still visible
-          const logIntensity = maxCount === minCount ? 1 :
-            (Math.log(point.sighting_count) - Math.log(minCount)) /
-            (Math.log(maxCount) - Math.log(minCount))
-          const fillOpacity = 0.35 + (logIntensity * 0.65)
-          const radius = 5 + (logIntensity * 8)
+          const intensity   = Math.sqrt(point.sighting_count / maxCount)
+          const fillOpacity = 0.2 + (intensity * 0.75)
           const circle = L.default.circleMarker([point.latitude, point.longitude], {
-            radius,
-            fillColor: '#388E3C',
-            color: '#1B5E20',
-            weight: 1,
-            opacity: 0.9,
-            fillOpacity
+            radius:      7,
+            fillColor:   '#388E3C',
+            color:       '#1B5E20',
+            weight:      1,
+            opacity:     0.9,
+            fillOpacity,
           }).addTo(map)
-
           circle.bindTooltip(
             `${point.sighting_count} sighting${point.sighting_count > 1 ? 's' : ''}`,
             { permanent: false, direction: 'top' }
@@ -107,7 +95,6 @@ export default function Map({ points, theme = 'dark', height = 500 }: MapProps) 
         mapRef.current = null
       }
     }
-
   }, [points, theme])
 
   return (
