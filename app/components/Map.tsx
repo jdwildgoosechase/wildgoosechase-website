@@ -51,6 +51,12 @@ export default function Map({ points, theme = 'dark', height = 500 }: MapProps) 
       window.addEventListener('mouseup', () => { isDragging = false })
       containerRef.current.addEventListener('click', () => {
         map.scrollWheelZoom.enable()
+        map.dragging.enable()
+        map.touchZoom.enable()
+        map.doubleClickZoom.enable()
+        map.boxZoom.enable()
+        map.keyboard.enable()
+        containerRef.current?.focus()
       })
       containerRef.current.addEventListener('mouseleave', () => {
         if (!isDragging) map.scrollWheelZoom.disable()

@@ -17,9 +17,9 @@ function formatDate(dateStr: string): string {
 export default async function BlogIndexPage({
   params,
 }: {
-  params: { username_slug: string }
+  params: Promise<{ username_slug: string }>
 }) {
-  const { username_slug } = params
+  const { username_slug } = await params
 
   // Load profile
   const { data: profileData } = await supabase

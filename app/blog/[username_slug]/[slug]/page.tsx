@@ -29,9 +29,9 @@ function buildPhotoCaption(photo: any): string {
 export default async function BlogEntryPage({
   params,
 }: {
-  params: { username_slug: string; slug: string }
+  params: Promise<{ username_slug: string; slug: string }>
 }) {
-  const { username_slug, slug } = params
+  const { username_slug, slug } = await params
 
   // Load entry
   const { data: entryData } = await supabase
@@ -203,7 +203,7 @@ export default async function BlogEntryPage({
             >
               🗺️ Sighting Locations
             </h2>
-            <div className="bg-white rounded-2xl shadow-sm overflow-hidden p-4">
+            <div className="bg-white rounded-2xl shadow-sm p-4">
               <Map points={tripMapPoints} theme="light" height={400} />
             </div>
           </div>
