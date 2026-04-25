@@ -49,17 +49,10 @@ export default async function BlogEntryPage({
 
   if (!entryData) notFound()
 
-  const [photosRes, adjacentRes] = await Promise.all([
-    supabase.rpc('wcg_web_get_blog_entry_photos', { p_entry_id: entryData.entry_id }),
-    supabase.rpc('wcg_web_get_blog_adjacent', {
-      p_user_id:    profileData.wcg_user_id,
-      p_entry_date: entryData.entry_date,
-      p_entry_id:   entryData.entry_id,
-    }),
-  ])
+  const { data: photosData } = await supabase
+    .rpc('wcg_web_get_blog_entry_photos', { p_entry_id: entryData.entry_id })
 
-  const photos         = (photosRes.data as any[]) ?? []
-  const adjacent       = adjacentRes.data?.[0] ?? {}
+  const photos         = (photosData as any[]) ?? []
   const coverPhoto     = photos.find((p: any) => p.is_cover)
   const nonCoverPhotos = photos.filter((p: any) => !p.is_cover)
 
@@ -135,38 +128,11 @@ export default async function BlogEntryPage({
               </article>
             )}
 
-            {/* ── Prev / Next navigation ── */}
-            <div className="flex items-center justify-between gap-4 mb-6">
-              {adjacent.prev_slug ? (
-                <Link
-                  href={`/blog/${username_slug}/${adjacent.prev_slug}`}
-                  className="flex-1 bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow group"
-                >
-                  <p className="text-green-500 text-xs mb-1">← Previous</p>
-                  <p className="text-green-900 text-sm font-medium group-hover:text-green-700 transition-colors line-clamp-2" style={{ fontFamily: 'Georgia, serif' }}>
-                    {adjacent.prev_title}
-                  </p>
-                </Link>
-              ) : <div className="flex-1" />}
-
-              {adjacent.next_slug ? (
-                <Link
-                  href={`/blog/${username_slug}/${adjacent.next_slug}`}
-                  className="flex-1 bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow group text-right"
-                >
-                  <p className="text-green-500 text-xs mb-1">Next →</p>
-                  <p className="text-green-900 text-sm font-medium group-hover:text-green-700 transition-colors line-clamp-2" style={{ fontFamily: 'Georgia, serif' }}>
-                    {adjacent.next_title}
-                  </p>
-                </Link>
-              ) : <div className="flex-1" />}
-            </div>
-
           </div>
 
           {/* ── Right — photos ── */}
           {nonCoverPhotos.length > 0 && (
-            <div className="w-64 flex-shrink-0 flex flex-col gap-3">
+            <div className="w-72 flex-shrink-0 grid grid-cols-2 gap-2 content-start">
               {nonCoverPhotos.map((photo: any) => {
                 const caption = buildPhotoCaption(photo)
                 return (

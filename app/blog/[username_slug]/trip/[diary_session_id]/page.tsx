@@ -4,8 +4,8 @@ import Map from '../../../../components/Map'
 import CollapsibleSection from '../../../../components/CollapsibleSection'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
+import TripDiaryViewer from '../../../../components/TripDiaryViewer'
+
 
 export const revalidate = 60
 
@@ -133,7 +133,7 @@ export default async function TripDiaryPage({
       )}
 
       {/* ── Main content ── */}
-      <div className="flex-1 max-w-5xl mx-auto w-full px-4 py-8">
+      <div className="flex-1 max-w-7xl mx-auto w-full px-4 py-8">
 
         {/* Back link */}
         <Link
@@ -152,86 +152,17 @@ export default async function TripDiaryPage({
           </div>
         )}
 
-        {/* ── Day by day timeline ── */}
-        {days.map((day: any, idx: number) => {
-          const dayPhotos    = photosByEntry[day.entry_id] ?? []
-          const nonCoverDay  = dayPhotos.filter((p: any) => !p.is_cover)
-          const dayLabel     = idx === 0
-            ? null
-            : `Day ${day.day_number} · ${formatDate(day.entry_date)}`
-
-          return (
-            <div key={day.entry_id} className="mb-10">
-
-              {/* Day header */}
-              {dayLabel && (
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-green-800 flex items-center justify-center text-white text-sm font-bold">
-                    {day.day_number}
-                  </div>
-                  <h2 className="text-green-900 text-xl" style={{ fontFamily: 'Georgia, serif' }}>
-                    {dayLabel}
-                  </h2>
-                  <div className="flex-1 h-px bg-green-300" />
-                </div>
-              )}
-
-              {/* ── Two column layout per day ── */}
-              <div className="flex gap-6 items-start">
-
-                {/* Left — narrative */}
-                <div className="flex-1 min-w-0">
-                  {day.body_text && (
-                    <article className="bg-white rounded-2xl p-6 shadow-sm prose prose-green max-w-none">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {day.body_text}
-                      </ReactMarkdown>
-                    </article>
-                  )}
-                </div>
-
-                {/* Right — photos for this day */}
-                {nonCoverDay.length > 0 && (
-                  <div className="w-56 flex-shrink-0 flex flex-col gap-3">
-                    {nonCoverDay.map((photo: any) => {
-                      const caption = buildPhotoCaption(photo)
-                      return (
-                        <div key={photo.id}>
-                          <div className="rounded-xl overflow-hidden aspect-square bg-green-100">
-                            <img
-                              src={photo.thumbnail_path ?? photo.file_path}
-                              alt={caption}
-                              className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                            />
-                          </div>
-                          {caption && (
-                            <p className="text-stone-500 text-xs mt-1 text-center px-1">{caption}</p>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-
-              </div>
-
-              {/* Day divider */}
-              {idx < days.length - 1 && (
-                <div className="border-b border-green-200 mt-8" />
-              )}
-
-            </div>
-          )
-        })}
-
-        {/* ── Prev / Next navigation ── */}
-        <div className="flex items-center justify-between gap-4 mb-8 pt-4 border-t border-green-300">
-          <div className="flex-1" />
-          <div className="flex-1" />
-        </div>
+       {/* ── Trip diary viewer ── */}
+        <TripDiaryViewer
+          days={days}
+          photosByEntry={photosByEntry}
+          username_slug={username_slug}
+          user_name={profileData.user_name}
+        />
 
         {/* ── Species list — collapsible ── */}
         {tripSpecies.length > 0 && (
+          <div className="mt-8">
           <CollapsibleSection title={`🐦 Species Recorded (${tripSpecies.length})`}>
             <div className="grid grid-cols-2 divide-x divide-stone-100">
               {tripSpecies.map((species: any, i: number) => (
@@ -252,6 +183,7 @@ export default async function TripDiaryPage({
               ))}
             </div>
           </CollapsibleSection>
+          </div>
         )}
 
         {/* ── Map — collapsible ── */}
