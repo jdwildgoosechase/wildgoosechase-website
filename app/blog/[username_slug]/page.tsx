@@ -5,14 +5,20 @@ import { notFound } from 'next/navigation'
 
 export const revalidate = 60
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr)
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
+function formatDateRange(start: string, end: string | null): string {
+  if (!end) return formatDate(start)
+  const s = new Date(start)
+  const e = new Date(end)
+  if (s.getFullYear() === e.getFullYear()) {
+    return `${s.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} – ${formatDate(end)}`
+  }
+  return `${formatDate(start)} – ${formatDate(end)}`
+}
 
 export default async function BlogIndexPage({
   params,
@@ -23,14 +29,16 @@ export default async function BlogIndexPage({
 
   // Load profile
   const { data: profileData } = await supabase
-    .rpc('wcg_web_get_blog_profile', { p_username_slug: username_slug })
+    .from('usr_user_profiles')
+    .select('wcg_user_id, user_name, profile_picture_url, bio, blog_title, username_slug')
+    .eq('username_slug', username_slug)
+    .single()
 
-  const profile = profileData?.[0]
-  if (!profile) notFound()
+  if (!profileData) notFound()
 
-  // Load entries
+  // Load all entries (single + trip day 1s)
   const { data: entries } = await supabase
-    .rpc('wcg_web_get_blog_entries', { p_user_id: profile.wcg_user_id })
+    .rpc('wcg_web_get_blog_entries', { p_user_id: profileData.wcg_user_id })
 
   const allEntries = (entries as any[]) ?? []
   const heroEntry  = allEntries[0] ?? null
@@ -47,10 +55,10 @@ export default async function BlogIndexPage({
       {/* ── Profile header ── */}
       <div className="bg-green-900 text-white py-12 px-6">
         <div className="max-w-4xl mx-auto flex items-center gap-6">
-          {profile.profile_picture_url ? (
+          {profileData.profile_picture_url ? (
             <img
-              src={profile.profile_picture_url}
-              alt={profile.user_name}
+              src={profileData.profile_picture_url}
+              alt={profileData.user_name}
               className="w-20 h-20 rounded-full object-cover border-4 border-green-600 flex-shrink-0"
             />
           ) : (
@@ -63,12 +71,14 @@ export default async function BlogIndexPage({
               className="text-3xl md:text-4xl text-white mb-1"
               style={{ fontFamily: 'Georgia, serif' }}
             >
-              {profile.blog_title ?? `${profile.user_name}'s Nature Diary`}
+              {profileData.blog_title ?? `${profileData.user_name}'s Nature Diary`}
             </h1>
-            {profile.bio && (
-              <p className="text-green-300 text-sm mt-2 max-w-xl">{profile.bio}</p>
+            {profileData.bio && (
+              <p className="text-green-300 text-sm mt-2 max-w-xl">{profileData.bio}</p>
             )}
-            <p className="text-green-500 text-xs mt-2">{allEntries.length} {allEntries.length === 1 ? 'entry' : 'entries'}</p>
+            <p className="text-green-500 text-xs mt-2">
+              {allEntries.length} {allEntries.length === 1 ? 'entry' : 'entries'}
+            </p>
           </div>
         </div>
       </div>
@@ -87,26 +97,45 @@ export default async function BlogIndexPage({
             {/* ── Hero entry ── */}
             {heroEntry && (
               <Link
-                href={`/blog/${username_slug}/${heroEntry.slug}`}
+                href={
+                  heroEntry.view_mode === 'daily'
+                    ? `/blog/${username_slug}/trip/${heroEntry.diary_session_id}`
+                    : `/blog/${username_slug}/${heroEntry.slug}`
+                }
                 className="block mb-8 group"
               >
                 <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                   {heroEntry.cover_url ? (
-                    <div className="w-full h-72 overflow-hidden">
+                    <div className="w-full h-72 overflow-hidden relative">
                       <img
                         src={heroEntry.cover_thumb ?? heroEntry.cover_url}
                         alt={heroEntry.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
+                      {heroEntry.view_mode === 'daily' && (
+                        <div className="absolute top-3 right-3 bg-green-800 text-white text-xs font-semibold px-3 py-1 rounded-full">
+                          {heroEntry.day_count} {heroEntry.day_count === 1 ? 'day' : 'days'}
+                        </div>
+                      )}
                     </div>
                   ) : (
-                    <div className="w-full h-72 bg-green-800 flex items-center justify-center">
+                    <div className="w-full h-72 bg-green-800 flex items-center justify-center relative">
                       <span className="text-6xl">🌿</span>
+                      {heroEntry.view_mode === 'daily' && (
+                        <div className="absolute top-3 right-3 bg-green-700 text-white text-xs font-semibold px-3 py-1 rounded-full">
+                          {heroEntry.day_count} {heroEntry.day_count === 1 ? 'day' : 'days'}
+                        </div>
+                      )}
                     </div>
                   )}
                   <div className="p-6">
                     <p className="text-green-600 text-xs uppercase tracking-wide mb-2">
-                      {formatDate(heroEntry.entry_date)} · Latest Entry
+                      {heroEntry.view_mode === 'daily' && heroEntry.trip_start_date
+                        ? formatDateRange(heroEntry.trip_start_date, heroEntry.trip_end_date)
+                        : formatDate(heroEntry.entry_date)
+                      }
+                      {' · '}
+                      {heroEntry.view_mode === 'daily' ? 'Trip Diary' : 'Latest Entry'}
                     </p>
                     <h2
                       className="text-green-900 text-2xl md:text-3xl mb-3 group-hover:text-green-700 transition-colors"
@@ -120,7 +149,7 @@ export default async function BlogIndexPage({
                       </p>
                     )}
                     <p className="text-green-600 text-sm mt-4 font-medium group-hover:text-green-800 transition-colors">
-                      Read more →
+                      {heroEntry.view_mode === 'daily' ? 'Read the diary →' : 'Read more →'}
                     </p>
                   </div>
                 </div>
@@ -140,25 +169,44 @@ export default async function BlogIndexPage({
                   {gridEntries.map((entry: any) => (
                     <Link
                       key={entry.entry_id}
-                      href={`/blog/${username_slug}/${entry.slug}`}
+                      href={
+                        entry.view_mode === 'daily'
+                          ? `/blog/${username_slug}/trip/${entry.diary_session_id}`
+                          : `/blog/${username_slug}/${entry.slug}`
+                      }
                       className="block group"
                     >
                       <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow h-full flex flex-col">
                         {entry.cover_url ? (
-                          <div className="w-full h-40 overflow-hidden flex-shrink-0">
+                          <div className="w-full h-40 overflow-hidden flex-shrink-0 relative">
                             <img
                               src={entry.cover_thumb ?? entry.cover_url}
                               alt={entry.title}
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                             />
+                            {entry.view_mode === 'daily' && (
+                              <div className="absolute top-2 right-2 bg-green-800 text-white text-xs font-semibold px-2 py-0.5 rounded-full">
+                                {entry.day_count} {entry.day_count === 1 ? 'day' : 'days'}
+                              </div>
+                            )}
                           </div>
                         ) : (
-                          <div className="w-full h-40 bg-green-800 flex items-center justify-center flex-shrink-0">
+                          <div className="w-full h-40 bg-green-800 flex items-center justify-center flex-shrink-0 relative">
                             <span className="text-4xl">🌿</span>
+                            {entry.view_mode === 'daily' && (
+                              <div className="absolute top-2 right-2 bg-green-700 text-white text-xs font-semibold px-2 py-0.5 rounded-full">
+                                {entry.day_count} {entry.day_count === 1 ? 'day' : 'days'}
+                              </div>
+                            )}
                           </div>
                         )}
                         <div className="p-4 flex flex-col flex-1">
-                          <p className="text-green-600 text-xs mb-1">{formatDate(entry.entry_date)}</p>
+                          <p className="text-green-600 text-xs mb-1">
+                            {entry.view_mode === 'daily' && entry.trip_start_date
+                              ? formatDateRange(entry.trip_start_date, entry.trip_end_date)
+                              : formatDate(entry.entry_date)
+                            }
+                          </p>
                           <h3
                             className="text-green-900 text-base font-semibold mb-2 group-hover:text-green-700 transition-colors line-clamp-2"
                             style={{ fontFamily: 'Georgia, serif' }}
@@ -171,7 +219,7 @@ export default async function BlogIndexPage({
                             </p>
                           )}
                           <p className="text-green-600 text-xs mt-3 font-medium group-hover:text-green-800 transition-colors">
-                            Read more →
+                            {entry.view_mode === 'daily' ? 'Read the diary →' : 'Read more →'}
                           </p>
                         </div>
                       </div>
